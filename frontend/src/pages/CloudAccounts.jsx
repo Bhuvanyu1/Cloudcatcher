@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { 
   SiAmazonwebservices, 
-  SiMicrosoftazure, 
+  SiMicrosoft, 
   SiGooglecloud, 
   SiDigitalocean 
 } from "react-icons/si";

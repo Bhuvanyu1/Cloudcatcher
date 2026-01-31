@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { 
   SiAmazonwebservices, 
-  SiMicrosoftazure, 
+  SiMicrosoft, 
   SiGooglecloud, 
   SiDigitalocean 
 } from "react-icons/si";
