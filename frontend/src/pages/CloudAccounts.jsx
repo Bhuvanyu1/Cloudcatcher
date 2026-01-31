@@ -219,7 +219,6 @@ export default function CloudAccounts() {
             const providerInfo = getProviderInfo(account.provider);
             const status = statusConfig[account.status] || statusConfig.connected;
             const StatusIcon = status.icon;
-            const ProviderIcon = providerInfo.icon;
 
             return (
               <Card 
@@ -231,10 +230,10 @@ export default function CloudAccounts() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div 
-                        className="p-2 border-2"
+                        className="p-2 border-2 flex items-center justify-center"
                         style={{ borderColor: providerInfo.color }}
                       >
-                        <ProviderIcon 
+                        <Cloud 
                           className="w-6 h-6" 
                           style={{ color: providerInfo.color }} 
                         />
