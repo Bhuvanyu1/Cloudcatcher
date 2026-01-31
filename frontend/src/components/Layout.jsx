@@ -68,7 +68,7 @@ export default function Layout() {
         {/* Provider Icons */}
         <div className="flex justify-around p-4 border-b-2 border-border bg-muted/20">
           <SiAmazonwebservices className="w-5 h-5 text-[#FF9900]" title="AWS" />
-          <SiMicrosoftazure className="w-5 h-5 text-[#0078D4]" title="Azure" />
+          <SiMicrosoft className="w-5 h-5 text-[#0078D4]" title="Azure" />
           <SiGooglecloud className="w-5 h-5 text-[#4285F4]" title="GCP" />
           <SiDigitalocean className="w-5 h-5 text-[#0080FF]" title="DigitalOcean" />
         </div>

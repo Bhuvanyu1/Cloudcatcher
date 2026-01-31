@@ -54,7 +54,7 @@ import { toast } from "sonner";
 
 const providers = [
   { value: "aws", label: "AWS", icon: SiAmazonwebservices, color: "#FF9900" },
-  { value: "azure", label: "Azure", icon: SiMicrosoftazure, color: "#0078D4" },
+  { value: "azure", label: "Azure", icon: SiMicrosoft, color: "#0078D4" },
   { value: "gcp", label: "GCP", icon: SiGooglecloud, color: "#4285F4" },
   { value: "do", label: "DigitalOcean", icon: SiDigitalocean, color: "#0080FF" },
 ];

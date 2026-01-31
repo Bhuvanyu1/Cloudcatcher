@@ -43,7 +43,7 @@ import { toast } from "sonner";
 
 const providerIcons = {
   aws: SiAmazonwebservices,
-  azure: SiMicrosoftazure,
+  azure: SiMicrosoft,
   gcp: SiGooglecloud,
   do: SiDigitalocean
 };
