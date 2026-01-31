@@ -61,19 +61,24 @@ export default function Inventory() {
   
   // Filters
   const [filters, setFilters] = useState({
-    provider: "",
-    cloud_account_id: "",
-    state: "",
+    provider: "all",
+    cloud_account_id: "all",
+    state: "all",
     name: "",
     region: ""
   });
 
   const fetchData = async () => {
     try {
+      const queryFilters = {};
+      if (filters.provider && filters.provider !== "all") queryFilters.provider = filters.provider;
+      if (filters.cloud_account_id && filters.cloud_account_id !== "all") queryFilters.cloud_account_id = filters.cloud_account_id;
+      if (filters.state && filters.state !== "all") queryFilters.state = filters.state;
+      if (filters.name) queryFilters.name = filters.name;
+      if (filters.region) queryFilters.region = filters.region;
+      
       const [instancesRes, accountsRes] = await Promise.all([
-        getInstances(Object.fromEntries(
-          Object.entries(filters).filter(([_, v]) => v)
-        )),
+        getInstances(queryFilters),
         getCloudAccounts()
       ]);
       setInstances(instancesRes.data);
@@ -104,15 +109,15 @@ export default function Inventory() {
 
   const clearFilters = () => {
     setFilters({
-      provider: "",
-      cloud_account_id: "",
-      state: "",
+      provider: "all",
+      cloud_account_id: "all",
+      state: "all",
       name: "",
       region: ""
     });
   };
 
-  const activeFilterCount = Object.values(filters).filter(v => v).length;
+  const activeFilterCount = Object.values(filters).filter(v => v && v !== "all").length;
 
   if (loading) {
     return (
@@ -214,7 +219,7 @@ export default function Inventory() {
                     <SelectValue placeholder="All Providers" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-2 border-border">
-                    <SelectItem value="">All Providers</SelectItem>
+                    <SelectItem value="all">All Providers</SelectItem>
                     <SelectItem value="aws">AWS</SelectItem>
                     <SelectItem value="azure">Azure</SelectItem>
                     <SelectItem value="gcp">GCP</SelectItem>
@@ -236,7 +241,7 @@ export default function Inventory() {
                     <SelectValue placeholder="All Accounts" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-2 border-border">
-                    <SelectItem value="">All Accounts</SelectItem>
+                    <SelectItem value="all">All Accounts</SelectItem>
                     {accounts.map(acc => (
                       <SelectItem key={acc.id} value={acc.id}>
                         {acc.account_name || acc.id.slice(0, 8)}
@@ -259,7 +264,7 @@ export default function Inventory() {
                     <SelectValue placeholder="All States" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-2 border-border">
-                    <SelectItem value="">All States</SelectItem>
+                    <SelectItem value="all">All States</SelectItem>
                     <SelectItem value="running">Running</SelectItem>
                     <SelectItem value="stopped">Stopped</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
