@@ -62,14 +62,14 @@ export default function Recommendations() {
   const [activeTab, setActiveTab] = useState("all");
   
   // Filters
-  const [severityFilter, setSeverityFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("open");
 
   const fetchData = async () => {
     try {
       const params = {
-        status: statusFilter || undefined,
-        severity: severityFilter || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        severity: severityFilter !== "all" ? severityFilter : undefined,
         category: activeTab !== "all" ? activeTab : undefined
       };
       
@@ -249,7 +249,7 @@ export default function Recommendations() {
               <SelectValue placeholder="All Severity" />
             </SelectTrigger>
             <SelectContent className="bg-card border-2 border-border">
-              <SelectItem value="">All Severity</SelectItem>
+              <SelectItem value="all">All Severity</SelectItem>
               <SelectItem value="high">High</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="low">Low</SelectItem>
@@ -261,7 +261,7 @@ export default function Recommendations() {
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent className="bg-card border-2 border-border">
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="dismissed">Dismissed</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
