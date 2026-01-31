@@ -3,18 +3,12 @@ import {
   Plus, 
   RefreshCw, 
   Trash2, 
-  Edit2, 
   CheckCircle, 
   XCircle, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Cloud
 } from "lucide-react";
-import { 
-  SiAmazonwebservices, 
-  SiMicrosoft, 
-  SiGooglecloud, 
-  SiDigitalocean 
-} from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,10 +47,10 @@ import {
 import { toast } from "sonner";
 
 const providers = [
-  { value: "aws", label: "AWS", icon: SiAmazonwebservices, color: "#FF9900" },
-  { value: "azure", label: "Azure", icon: SiMicrosoft, color: "#0078D4" },
-  { value: "gcp", label: "GCP", icon: SiGooglecloud, color: "#4285F4" },
-  { value: "do", label: "DigitalOcean", icon: SiDigitalocean, color: "#0080FF" },
+  { value: "aws", label: "AWS", color: "#FF9900" },
+  { value: "azure", label: "Azure", color: "#0078D4" },
+  { value: "gcp", label: "GCP", color: "#4285F4" },
+  { value: "do", label: "DigitalOcean", color: "#0080FF" },
 ];
 
 const statusConfig = {
@@ -328,12 +322,9 @@ export default function CloudAccounts() {
         <Card className="bg-card border-2 border-border shadow-[4px_4px_0px_0px_#333]">
           <CardContent className="p-12 text-center">
             <div className="flex justify-center gap-4 mb-6">
-              {providers.map(p => {
-                const Icon = p.icon;
-                return (
-                  <Icon key={p.value} className="w-8 h-8 text-muted-foreground" />
-                );
-              })}
+              {providers.map(p => (
+                <Cloud key={p.value} className="w-8 h-8" style={{ color: p.color }} />
+              ))}
             </div>
             <h3 className="font-heading font-bold text-xl uppercase mb-2">
               No Cloud Accounts Connected
@@ -376,21 +367,17 @@ export default function CloudAccounts() {
                   <SelectValue placeholder="Select a provider" />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-2 border-border">
-                  {providers.map(p => {
-                    const Icon = p.icon;
-                    return (
-                      <SelectItem 
-                        key={p.value} 
-                        value={p.value}
-                        className="cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4" style={{ color: p.color }} />
-                          <span>{p.label}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
+                  {providers.map(p => (
+                    <SelectItem 
+                      key={p.value} 
+                      value={p.value}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold" style={{ color: p.color }}>{p.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
