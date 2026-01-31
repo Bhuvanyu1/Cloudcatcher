@@ -1,11 +1,5 @@
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { 
-  SiAmazonwebservices, 
-  SiMicrosoft, 
-  SiGooglecloud, 
-  SiDigitalocean 
-} from "react-icons/si";
-import { 
   LayoutDashboard, 
   Cloud, 
   Server, 
@@ -18,6 +12,25 @@ import { Button } from "@/components/ui/button";
 import { syncAllAccounts } from "@/lib/api";
 import { toast } from "sonner";
 import { useState } from "react";
+
+// Provider icons as colored text badges
+const ProviderIcon = ({ provider, className = "" }) => {
+  const config = {
+    aws: { color: "#FF9900", label: "AWS" },
+    azure: { color: "#0078D4", label: "AZ" },
+    gcp: { color: "#4285F4", label: "GCP" },
+    do: { color: "#0080FF", label: "DO" }
+  };
+  const p = config[provider] || config.aws;
+  return (
+    <span 
+      className={`font-bold text-xs ${className}`} 
+      style={{ color: p.color }}
+    >
+      {p.label}
+    </span>
+  );
+};
 
 const navItems = [
   { path: "/", icon: LayoutDashboard, label: "DASHBOARD" },
@@ -67,10 +80,10 @@ export default function Layout() {
 
         {/* Provider Icons */}
         <div className="flex justify-around p-4 border-b-2 border-border bg-muted/20">
-          <SiAmazonwebservices className="w-5 h-5 text-[#FF9900]" title="AWS" />
-          <SiMicrosoft className="w-5 h-5 text-[#0078D4]" title="Azure" />
-          <SiGooglecloud className="w-5 h-5 text-[#4285F4]" title="GCP" />
-          <SiDigitalocean className="w-5 h-5 text-[#0080FF]" title="DigitalOcean" />
+          <ProviderIcon provider="aws" />
+          <ProviderIcon provider="azure" />
+          <ProviderIcon provider="gcp" />
+          <ProviderIcon provider="do" />
         </div>
 
         {/* Navigation */}
