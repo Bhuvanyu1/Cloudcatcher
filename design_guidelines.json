@@ -1,0 +1,141 @@
+{
+  "design_system": {
+    "name": "Cloud Watcher - Neo-Brutalist Ops",
+    "theme": "dark",
+    "description": "A high-contrast, raw, and technical design system for DevOps professionals. Rejects softness for clarity and impact.",
+    "typography": {
+      "font_family": {
+        "heading": "Chivo, sans-serif",
+        "body": "JetBrains Mono, monospace",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-5xl font-black tracking-tighter uppercase",
+        "h2": "text-3xl font-bold tracking-tight uppercase",
+        "h3": "text-xl font-bold tracking-tight",
+        "body": "text-sm font-medium leading-relaxed",
+        "caption": "text-xs font-bold uppercase tracking-widest text-muted-foreground"
+      },
+      "imports": [
+        "https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      ]
+    },
+    "colors": {
+      "palette": {
+        "background": "#000000",
+        "foreground": "#FFFFFF",
+        "card": "#050505",
+        "card_foreground": "#FFFFFF",
+        "popover": "#000000",
+        "popover_foreground": "#FFFFFF",
+        "primary": "#CCFF00",
+        "primary_foreground": "#000000",
+        "secondary": "#00FFFF",
+        "secondary_foreground": "#000000",
+        "muted": "#1A1A1A",
+        "muted_foreground": "#888888",
+        "accent": "#FF00FF",
+        "accent_foreground": "#000000",
+        "destructive": "#FF3333",
+        "destructive_foreground": "#FFFFFF",
+        "border": "#333333",
+        "input": "#1A1A1A",
+        "ring": "#CCFF00"
+      },
+      "chart_colors": [
+        "#CCFF00",
+        "#00FFFF",
+        "#FF00FF",
+        "#FF3333",
+        "#FFFF00"
+      ]
+    },
+    "visual_enhancers": {
+      "borders": {
+        "default": "border-2 border-border",
+        "thick": "border-4 border-foreground",
+        "active": "border-primary"
+      },
+      "radius": {
+        "default": "rounded-none",
+        "button": "rounded-none",
+        "card": "rounded-none",
+        "input": "rounded-none"
+      },
+      "shadows": {
+        "hard": "shadow-[4px_4px_0px_0px_#FFFFFF]",
+        "hard_hover": "shadow-[2px_2px_0px_0px_#FFFFFF]",
+        "hard_active": "shadow-none translate-x-[4px] translate-y-[4px]",
+        "neon": "shadow-[0px_0px_10px_0px_rgba(204,255,0,0.5)]"
+      }
+    },
+    "layout": {
+      "container": "max-w-[1600px] mx-auto p-6",
+      "grid_system": "grid grid-cols-1 md:grid-cols-12 gap-6",
+      "spacing": {
+        "section": "py-12",
+        "component": "p-6"
+      }
+    }
+  },
+  "components": {
+    "Button": {
+      "base": "font-mono font-bold uppercase tracking-wider transition-all active:translate-x-[2px] active:translate-y-[2px]",
+      "variants": {
+        "default": "bg-primary text-primary-foreground border-2 border-transparent hover:border-white hover:shadow-[4px_4px_0px_0px_#FFFFFF]",
+        "outline": "bg-transparent text-foreground border-2 border-foreground hover:bg-muted hover:shadow-[4px_4px_0px_0px_#CCFF00]",
+        "ghost": "hover:bg-muted hover:text-foreground",
+        "destructive": "bg-destructive text-destructive-foreground border-2 border-transparent hover:shadow-[4px_4px_0px_0px_#FFFFFF]"
+      }
+    },
+    "Card": {
+      "base": "bg-card text-card-foreground border-2 border-border shadow-[4px_4px_0px_0px_#333333]",
+      "header": "border-b-2 border-border p-4 bg-muted/20",
+      "content": "p-6"
+    },
+    "Input": {
+      "base": "bg-input border-2 border-border focus:border-primary focus:ring-0 focus:shadow-[4px_4px_0px_0px_#CCFF00] placeholder:text-muted-foreground/50 font-mono"
+    },
+    "Table": {
+      "wrapper": "border-2 border-border",
+      "header": "bg-muted text-muted-foreground uppercase tracking-wider font-bold border-b-2 border-border",
+      "row": "border-b border-border/50 hover:bg-muted/50 transition-colors",
+      "cell": "p-4 font-mono text-sm"
+    },
+    "Badge": {
+      "base": "rounded-none border-2 px-2 py-0.5 text-xs font-bold uppercase",
+      "variants": {
+        "default": "border-transparent bg-primary text-primary-foreground",
+        "secondary": "border-transparent bg-secondary text-secondary-foreground",
+        "outline": "text-foreground"
+      }
+    }
+  },
+  "image_urls": {
+    "hero_backgrounds": [
+      "https://images.unsplash.com/photo-1680992046617-e2e35451bcdb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxzZXJ2ZXIlMjByb29tJTIwbmVvbiUyMGxpZ2h0cyUyMGRhcmt8ZW58MHx8fHwxNzY5ODYyMDU2fDA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1764258560300-2346b28b4e7c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGN5YmVyJTIwZGF0YSUyMGZsb3clMjBkYXJrfGVufDB8fHx8MTc2OTg2MjA1OHww&ixlib=rb-4.1.0&q=85"
+    ],
+    "placeholders": {
+      "user_avatar": "https://github.com/shadcn.png"
+    }
+  },
+  "instructions_to_main_agent": [
+    "INSTALLATION: Run `yarn add react-icons` immediately to support provider logos.",
+    "FONTS: Add the Google Fonts import link to `public/index.html` or `src/index.css`.",
+    "TAILWIND: Update `tailwind.config.js` to extend the theme with the colors and border radius defined above. CRITICAL: Set `borderRadius` to `0` for all components to achieve the sharp edge look.",
+    "SHADCN: When using Shadcn components, override the default `rounded-md` classes with `rounded-none`.",
+    "ICONS: Use `react-icons/fa` (FontAwesome) or `react-icons/si` (Simple Icons) for AWS, Azure, GCP, and DigitalOcean logos. Do not use external images for these logos.",
+    "LAYOUT: Use the 'Bento' grid strategy. Create a dashboard layout with a fixed sidebar and a scrollable main content area.",
+    "CHARTS: Use `recharts` with the custom neon color palette defined in `colors.chart_colors`. Avoid gradients in charts; use solid strokes.",
+    "INTERACTIONS: Add hover states to all interactive elements. The 'hard shadow' effect (box-shadow moving on hover) is key to the Neo-Brutalist feel.",
+    "DATA-TESTID: Ensure every button, input, and link has a `data-testid` attribute (e.g., `data-testid='sync-now-btn'`)."
+  ],
+  "universal_guidelines": [
+    "Do not use gradients for backgrounds. Use solid colors or subtle noise textures.",
+    "Ensure high contrast for all text. Use the `primary` color for key actions and `destructive` for critical alerts.",
+    "Avoid 'soft' UI elements like large blur radii or rounded corners.",
+    "Use uppercase text for labels, headers, and buttons to enhance the 'technical' feel.",
+    "Keep the UI dense but legible. Use `JetBrains Mono` for all data-heavy components (tables, logs, stats)."
+  ]
+}
