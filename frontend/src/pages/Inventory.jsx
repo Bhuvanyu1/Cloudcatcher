@@ -6,16 +6,9 @@ import {
   Server,
   Globe,
   Lock,
-  ChevronDown,
-  ChevronUp,
-  X
+  X,
+  Cloud
 } from "lucide-react";
-import { 
-  SiAmazonwebservices, 
-  SiMicrosoft, 
-  SiGooglecloud, 
-  SiDigitalocean 
-} from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,18 +37,11 @@ import {
 import { getInstances, getCloudAccounts, syncAllAccounts } from "@/lib/api";
 import { toast } from "sonner";
 
-const providerIcons = {
-  aws: SiAmazonwebservices,
-  azure: SiMicrosoft,
-  gcp: SiGooglecloud,
-  do: SiDigitalocean
-};
-
-const providerColors = {
-  aws: "#FF9900",
-  azure: "#0078D4",
-  gcp: "#4285F4",
-  do: "#0080FF"
+const providerConfig = {
+  aws: { color: "#FF9900", label: "AWS" },
+  azure: { color: "#0078D4", label: "Azure" },
+  gcp: { color: "#4285F4", label: "GCP" },
+  do: { color: "#0080FF", label: "DO" }
 };
 
 const stateColors = {
@@ -319,8 +305,7 @@ export default function Inventory() {
             <TableBody>
               {instances.length > 0 ? (
                 instances.map((instance) => {
-                  const ProviderIcon = providerIcons[instance.provider];
-                  const providerColor = providerColors[instance.provider];
+                  const config = providerConfig[instance.provider];
                   
                   return (
                     <TableRow 
@@ -331,10 +316,9 @@ export default function Inventory() {
                     >
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {ProviderIcon && (
-                            <ProviderIcon className="w-4 h-4" style={{ color: providerColor }} />
-                          )}
-                          <span className="uppercase text-xs font-bold">{instance.provider}</span>
+                          <span className="uppercase text-xs font-bold" style={{ color: config?.color }}>
+                            {instance.provider}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm font-medium">
@@ -409,14 +393,15 @@ export default function Inventory() {
             <div className="space-y-4 py-4" data-testid="instance-detail-modal">
               {/* Header Info */}
               <div className="flex items-center gap-4 p-4 bg-muted/20 border-2 border-border">
-                {providerIcons[selectedInstance.provider] && (
-                  <div className="p-3 border-2" style={{ borderColor: providerColors[selectedInstance.provider] }}>
-                    {(() => {
-                      const Icon = providerIcons[selectedInstance.provider];
-                      return <Icon className="w-8 h-8" style={{ color: providerColors[selectedInstance.provider] }} />;
-                    })()}
-                  </div>
-                )}
+                <div 
+                  className="p-3 border-2"
+                  style={{ borderColor: providerConfig[selectedInstance.provider]?.color }}
+                >
+                  <Cloud 
+                    className="w-8 h-8" 
+                    style={{ color: providerConfig[selectedInstance.provider]?.color }}
+                  />
+                </div>
                 <div>
                   <h3 className="font-bold text-lg">{selectedInstance.name || "Unnamed Instance"}</h3>
                   <p className="font-mono text-sm text-muted-foreground">{selectedInstance.instance_id}</p>
