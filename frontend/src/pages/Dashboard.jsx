@@ -10,30 +10,17 @@ import {
   ArrowRight,
   Activity
 } from "lucide-react";
-import { 
-  SiAmazonwebservices, 
-  SiMicrosoft, 
-  SiGooglecloud, 
-  SiDigitalocean 
-} from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getDashboardStats, getRecommendations, syncAllAccounts } from "@/lib/api";
 import { toast } from "sonner";
 
-const providerIcons = {
-  aws: SiAmazonwebservices,
-  azure: SiMicrosoft,
-  gcp: SiGooglecloud,
-  do: SiDigitalocean
-};
-
-const providerColors = {
-  aws: "#FF9900",
-  azure: "#0078D4",
-  gcp: "#4285F4",
-  do: "#0080FF"
+const providerConfig = {
+  aws: { color: "#FF9900", label: "AWS" },
+  azure: { color: "#0078D4", label: "Azure" },
+  gcp: { color: "#4285F4", label: "GCP" },
+  do: { color: "#0080FF", label: "DigitalOcean" }
 };
 
 const providerNames = {
@@ -207,8 +194,7 @@ export default function Dashboard() {
             {stats?.instances_by_provider && Object.keys(stats.instances_by_provider).length > 0 ? (
               <div className="space-y-4">
                 {Object.entries(stats.instances_by_provider).map(([provider, count]) => {
-                  const Icon = providerIcons[provider];
-                  const color = providerColors[provider];
+                  const config = providerConfig[provider];
                   const total = stats.total_instances || 1;
                   const percentage = Math.round((count / total) * 100);
                   
@@ -216,15 +202,16 @@ export default function Dashboard() {
                     <div key={provider} className="space-y-2" data-testid={`provider-${provider}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {Icon && <Icon className="w-5 h-5" style={{ color }} />}
-                          <span className="font-bold uppercase">{providerNames[provider] || provider}</span>
+                          <span className="font-bold text-sm" style={{ color: config?.color || "#fff" }}>
+                            {providerNames[provider] || provider}
+                          </span>
                         </div>
                         <span className="font-mono font-bold">{count}</span>
                       </div>
                       <div className="h-2 bg-muted border border-border">
                         <div 
                           className="h-full transition-all duration-500"
-                          style={{ width: `${percentage}%`, backgroundColor: color }}
+                          style={{ width: `${percentage}%`, backgroundColor: config?.color || "#fff" }}
                         />
                       </div>
                     </div>
