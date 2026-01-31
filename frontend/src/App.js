@@ -1,6 +1,6 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import CloudAccounts from "@/pages/CloudAccounts";
