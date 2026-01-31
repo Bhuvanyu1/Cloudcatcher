@@ -297,6 +297,107 @@ async def log_audit_event(event_type: str, entity_type: str, entity_id: str = No
     }
     await db.audit_events.insert_one(event)
 
+# ==================== ANOMALY DETECTION ====================
+
+async def detect_anomalies(instances: List[Dict], previous_instances: List[Dict] = None) -> List[Dict]:
+    """Basic anomaly detection for inventory changes"""
+    anomalies = []
+    
+    # Group current instances by provider and region
+    current_by_region = {}
+    for inst in instances:
+        key = f"{inst.get('provider')}:{inst.get('region_or_zone')}"
+        current_by_region[key] = current_by_region.get(key, 0) + 1
+    
+    # Count instances with public IPs
+    public_ip_count = sum(1 for inst in instances if inst.get('public_ip'))
+    
+    # Anomaly: High number of instances with public IPs (>50%)
+    if instances and public_ip_count / len(instances) > 0.5:
+        anomalies.append({
+            "id": str(uuid.uuid4()),
+            "alert_type": "high_public_exposure",
+            "severity": "high",
+            "payload": {
+                "public_ip_count": public_ip_count,
+                "total_instances": len(instances),
+                "percentage": round(public_ip_count / len(instances) * 100, 1)
+            },
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    # Anomaly: New region detected (would compare with previous sync)
+    # This is a placeholder - in production, compare with historical data
+    
+    return anomalies
+
+# ==================== ALERTS ENDPOINTS ====================
+
+class Alert(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    provider: Optional[str] = None
+    cloud_account_id: Optional[str] = None
+    alert_type: str
+    severity: str
+    resource_id: Optional[str] = None
+    payload: Dict[str, Any] = {}
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class WebhookAlert(BaseModel):
+    source: str
+    alert_type: str
+    severity: str = "medium"
+    resource_id: Optional[str] = None
+    payload: Dict[str, Any] = {}
+
+@api_router.get("/alerts", response_model=List[Alert])
+async def list_alerts(
+    alert_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    limit: int = Query(default=50, le=200)
+):
+    """Get alerts from anomaly detection and webhook ingestion"""
+    query = {}
+    if alert_type:
+        query["alert_type"] = alert_type
+    if severity:
+        query["severity"] = severity
+    
+    alerts = await db.alerts.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return alerts
+
+@api_router.post("/alerts/webhook", response_model=Alert)
+async def ingest_webhook_alert(alert_data: WebhookAlert):
+    """Ingest external alerts via webhook"""
+    alert = Alert(
+        alert_type=alert_data.alert_type,
+        severity=alert_data.severity,
+        resource_id=alert_data.resource_id,
+        payload={**alert_data.payload, "source": alert_data.source}
+    )
+    
+    doc = alert.model_dump()
+    await db.alerts.insert_one(doc)
+    
+    await log_audit_event("alert.ingested", "alert", alert.id, {"source": alert_data.source})
+    
+    return alert
+
+@api_router.post("/alerts/detect")
+async def run_anomaly_detection():
+    """Run anomaly detection on current inventory"""
+    instances = await db.instances.find({}, {"_id": 0}).to_list(1000)
+    
+    anomalies = await detect_anomalies(instances)
+    
+    # Store detected anomalies as alerts
+    for anomaly in anomalies:
+        await db.alerts.insert_one(anomaly)
+    
+    await log_audit_event("anomaly_detection.completed", "system", payload={"alerts_generated": len(anomalies)})
+    
+    return {"success": True, "anomalies_detected": len(anomalies), "alerts": anomalies}
+
 # ==================== API ENDPOINTS ====================
 
 @api_router.get("/health")
