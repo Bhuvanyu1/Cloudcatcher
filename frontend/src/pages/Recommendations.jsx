@@ -7,18 +7,12 @@ import {
   CheckCircle,
   XCircle,
   ChevronRight,
-  Filter
+  Cloud
 } from "lucide-react";
-import { 
-  SiAmazonwebservices, 
-  SiMicrosoft, 
-  SiGooglecloud, 
-  SiDigitalocean 
-} from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -41,18 +35,11 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 
-const providerIcons = {
-  aws: SiAmazonwebservices,
-  azure: SiMicrosoft,
-  gcp: SiGooglecloud,
-  do: SiDigitalocean
-};
-
-const providerColors = {
-  aws: "#FF9900",
-  azure: "#0078D4",
-  gcp: "#4285F4",
-  do: "#0080FF"
+const providerConfig = {
+  aws: { color: "#FF9900", label: "AWS" },
+  azure: { color: "#0078D4", label: "Azure" },
+  gcp: { color: "#4285F4", label: "GCP" },
+  do: { color: "#0080FF", label: "DO" }
 };
 
 const severityConfig = {
