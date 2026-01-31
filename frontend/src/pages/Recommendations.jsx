@@ -275,7 +275,7 @@ export default function Recommendations() {
         {recommendations.length > 0 ? (
           recommendations.map((rec) => {
             const CategoryIcon = categoryConfig[rec.category]?.icon || AlertTriangle;
-            const ProviderIcon = providerIcons[rec.provider];
+            const config = providerConfig[rec.provider];
             const severityCfg = severityConfig[rec.severity] || severityConfig.low;
             
             return (
@@ -319,11 +319,8 @@ export default function Recommendations() {
 
                       {/* Meta */}
                       <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                        {ProviderIcon && (
-                          <div className="flex items-center gap-1">
-                            <ProviderIcon className="w-3 h-3" style={{ color: providerColors[rec.provider] }} />
-                            <span className="uppercase">{rec.provider}</span>
-                          </div>
+                        {config && (
+                          <span className="uppercase font-bold" style={{ color: config.color }}>{rec.provider}</span>
                         )}
                         <span>Account: {getAccountName(rec.cloud_account_id)}</span>
                         {rec.resource_id && (
