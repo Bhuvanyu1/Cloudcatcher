@@ -20,7 +20,18 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-right" 
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: '#050505',
+            border: '2px solid #333',
+            color: '#fff',
+            fontFamily: 'JetBrains Mono, monospace'
+          }
+        }}
+      />
     </div>
   );
 }
