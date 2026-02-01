@@ -780,6 +780,36 @@ async def approve_remediation(action_id: str):
     result = await engine.execute_action(action_id, approved_by="api_user")
     return result
 
+# ----- WAFR -----
+
+@api_router.post("/wafr/assess/{account_id}")
+async def run_wafr_assessment(account_id: str):
+    """Run AWS Well-Architected Review for an account"""
+    account = await db.cloud_accounts.find_one({"id": account_id})
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+    if account["provider"] != "aws":
+        raise HTTPException(status_code=400, detail="WAFR only supports AWS accounts")
+
+    credentials = decrypt_credentials(account["credentials"])
+    engine = WAFREngine(
+        credentials["access_key_id"],
+        credentials["secret_access_key"],
+        credentials.get("region", "us-east-1"),
+    )
+
+    results = await engine.run_wafr_assessment()
+
+    await db.wafr_assessments.insert_one(
+        {
+            "account_id": account_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "results": results,
+        }
+    )
+
+    return results
+
 # ----- Dashboard Stats -----
 
 @api_router.get("/dashboard/correlated-alerts")

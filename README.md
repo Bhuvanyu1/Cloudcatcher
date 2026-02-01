@@ -25,6 +25,11 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 - Identify security misconfigurations
 - Monitor production environment risks
 
+### Remediation & WAFR
+- Generate remediation actions for idle resources and approve execution flows
+- Run AWS Well-Architected Framework Review (WAFR) assessments for AWS accounts
+- Correlate cost + security alerts for at-risk resources
+
 ### Anomaly Detection & Alerts
 - Detect unusual inventory changes
 - Webhook ingestion for external alerts
@@ -101,10 +106,23 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 | POST | `/api/alerts/webhook` | Ingest external alert |
 | POST | `/api/alerts/detect` | Run anomaly detection |
 
+### Remediation
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/remediation/analyze` | Analyze and generate remediation actions |
+| GET | `/api/remediation/actions` | List remediation actions |
+| POST | `/api/remediation/actions/{action_id}/approve` | Approve and execute action |
+
+### WAFR (AWS)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/wafr/assess/{account_id}` | Run WAFR assessment for an AWS account |
+
 ### Dashboard
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/dashboard/stats` | Get dashboard statistics |
+| GET | `/api/dashboard/correlated-alerts` | List correlated cost + security alerts |
 
 ## Installation
 
@@ -148,6 +166,7 @@ yarn start
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
 CORS_ORIGINS=*
+ENCRYPTION_KEY=base64-encoded-32-byte-key
 ```
 
 ### Frontend (`/frontend/.env`)
@@ -204,6 +223,12 @@ curl -X POST http://localhost:8001/api/alerts/webhook \
     "resource_id": "i-1234567890",
     "payload": {"cpu_percent": 95}
   }'
+```
+
+### WAFR Assessment (AWS)
+
+```bash
+curl -X POST http://localhost:8001/api/wafr/assess/{account_id}
 ```
 
 ## Supported Cloud Providers
