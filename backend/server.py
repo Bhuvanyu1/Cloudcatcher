@@ -136,6 +136,7 @@ class DashboardStats(BaseModel):
     open_recommendations: int = 0
     finops_recommendations: int = 0
     secops_recommendations: int = 0
+    correlated_alerts: List[Dict[str, Any]] = []
     last_sync: Optional[str] = None
 
 class SyncResult(BaseModel):
@@ -331,6 +332,41 @@ async def detect_anomalies(instances: List[Dict], previous_instances: List[Dict]
     # This is a placeholder - in production, compare with historical data
     
     return anomalies
+
+# ==================== CORRELATED ALERTS ====================
+
+async def fetch_correlated_alerts(limit: int = 100) -> List[Dict[str, Any]]:
+    """Find instances with both cost anomalies and security issues"""
+    problematic = await db.instances.find(
+        {"state": "stopped", "public_ip": {"$ne": None}},
+        {"_id": 0}
+    ).to_list(limit)
+
+    alerts = []
+    for inst in problematic:
+        finops_rec = await db.recommendations.find_one({
+            "resource_id": inst["instance_id"],
+            "category": "finops",
+            "status": "open"
+        })
+
+        secops_rec = await db.recommendations.find_one({
+            "resource_id": inst["instance_id"],
+            "category": "secops",
+            "status": "open"
+        })
+
+        if finops_rec and secops_rec:
+            alerts.append({
+                "id": inst["instance_id"],
+                "title": f"Instance {inst.get('name') or inst['instance_id']} has BOTH cost and security issues",
+                "description": f"FinOps: {finops_rec['title']}. SecOps: {secops_rec['title']}",
+                "cost_impact": 5.0,
+                "security_severity": secops_rec["severity"],
+                "instance": inst
+            })
+
+    return alerts
 
 # ==================== ALERTS ENDPOINTS ====================
 
@@ -746,6 +782,12 @@ async def approve_remediation(action_id: str):
 
 # ----- Dashboard Stats -----
 
+@api_router.get("/dashboard/correlated-alerts")
+async def get_correlated_alerts():
+    """Find instances with both cost anomalies and security issues"""
+    alerts = await fetch_correlated_alerts()
+    return alerts
+
 @api_router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats():
     """Get aggregated dashboard statistics"""
@@ -777,6 +819,8 @@ async def get_dashboard_stats():
         sort=[("last_sync_at", -1)]
     )
     last_sync = last_sync_account.get("last_sync_at") if last_sync_account else None
+
+    correlated_alerts = await fetch_correlated_alerts(limit=100)
     
     return DashboardStats(
         total_instances=len(instances),
@@ -787,6 +831,7 @@ async def get_dashboard_stats():
         open_recommendations=open_recs,
         finops_recommendations=finops_recs,
         secops_recommendations=secops_recs,
+        correlated_alerts=correlated_alerts,
         last_sync=last_sync
     )
 
