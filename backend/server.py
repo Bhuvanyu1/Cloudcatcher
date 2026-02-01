@@ -11,8 +11,6 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from remediation import RemediationEngine
-from credentials_encryption import decrypt_credentials, encrypt_credentials
-from wafr import WAFREngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -344,28 +342,19 @@ async def fetch_correlated_alerts(limit: int = 100) -> List[Dict[str, Any]]:
         {"_id": 0}
     ).to_list(limit)
 
-    if not problematic:
-        return []
-
-    instance_ids = [inst["instance_id"] for inst in problematic]
-    recommendations = await db.recommendations.find(
-        {
-            "resource_id": {"$in": instance_ids},
-            "category": {"$in": ["finops", "secops"]},
-            "status": "open",
-        },
-        {"_id": 0}
-    ).to_list(2000)
-
-    recs_by_resource: Dict[str, Dict[str, Dict[str, Any]]] = {}
-    for rec in recommendations:
-        recs_by_resource.setdefault(rec["resource_id"], {})[rec["category"]] = rec
-
     alerts = []
     for inst in problematic:
-        resource_recs = recs_by_resource.get(inst["instance_id"], {})
-        finops_rec = resource_recs.get("finops")
-        secops_rec = resource_recs.get("secops")
+        finops_rec = await db.recommendations.find_one({
+            "resource_id": inst["instance_id"],
+            "category": "finops",
+            "status": "open"
+        })
+
+        secops_rec = await db.recommendations.find_one({
+            "resource_id": inst["instance_id"],
+            "category": "secops",
+            "status": "open"
+        })
 
         if finops_rec and secops_rec:
             alerts.append({

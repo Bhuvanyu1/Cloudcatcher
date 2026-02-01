@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
-from typing import Dict, Union
+from typing import Dict
 
 from cryptography.fernet import Fernet
 
@@ -28,10 +28,8 @@ def encrypt_credentials(credentials: Dict) -> str:
     return base64.b64encode(encrypted).decode()
 
 
-def decrypt_credentials(encrypted: Union[str, Dict]) -> Dict:
+def decrypt_credentials(encrypted: str) -> Dict:
     """Decrypt base64 string to credentials dict."""
-    if isinstance(encrypted, dict):
-        return encrypted
     fernet = Fernet(get_encryption_key())
     encrypted_bytes = base64.b64decode(encrypted.encode())
     decrypted = fernet.decrypt(encrypted_bytes)
