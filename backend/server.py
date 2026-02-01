@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from remediation import RemediationEngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -717,6 +718,31 @@ async def run_recommendations():
     await log_audit_event("recommendations.generated", "system", payload={"count": len(recommendations)})
     
     return {"success": True, "recommendations_generated": len(recommendations)}
+
+# ----- Remediation -----
+
+@api_router.post("/remediation/analyze")
+async def analyze_remediations(dry_run: bool = True):
+    """Analyze and generate remediation actions"""
+    engine = RemediationEngine(db)
+    actions = await engine.analyze_and_remediate(dry_run=dry_run)
+    return {"success": True, "actions": actions, "count": len(actions)}
+
+
+@api_router.get("/remediation/actions")
+async def list_remediation_actions(status: Optional[str] = None):
+    """List all remediation actions"""
+    query = {"status": status} if status else {}
+    actions = await db.remediation_actions.find(query, {"_id": 0}).to_list(1000)
+    return actions
+
+
+@api_router.post("/remediation/actions/{action_id}/approve")
+async def approve_remediation(action_id: str):
+    """Approve and execute a remediation action"""
+    engine = RemediationEngine(db)
+    result = await engine.execute_action(action_id, approved_by="api_user")
+    return result
 
 # ----- Dashboard Stats -----
 
