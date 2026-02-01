@@ -78,6 +78,8 @@ export default function Dashboard() {
     );
   }
 
+  const correlatedAlerts = stats?.correlated_alerts ?? [];
+
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       {/* Header */}
@@ -287,6 +289,37 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Correlated Alerts Section */}
+      <Card className="bg-card border-2 border-destructive">
+        <CardHeader>
+          <CardTitle>⚠️ CORRELATED COST + SECURITY ALERTS</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {correlatedAlerts.length > 0 ? (
+            correlatedAlerts.map((alert) => (
+              <div key={alert.id} className="p-4 border-2 border-destructive mb-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="text-[#FF9900]" />
+                  <Shield className="text-destructive" />
+                  <span className="font-bold">{alert.title}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{alert.description}</p>
+                <div className="flex gap-2 mt-3">
+                  <Badge className="bg-destructive">Cost Impact: ${alert.cost_impact}/day</Badge>
+                  <Badge className="bg-destructive">Security Risk: {alert.security_severity}</Badge>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="font-bold uppercase">No correlated alerts</p>
+              <p className="text-sm mt-1">All clear for now.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Instance States */}
       {stats?.instances_by_state && Object.keys(stats.instances_by_state).length > 0 && (

@@ -10,6 +10,9 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from remediation import RemediationEngine
+from credentials_encryption import decrypt_credentials, encrypt_credentials
+from wafr import WAFREngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -135,6 +138,7 @@ class DashboardStats(BaseModel):
     open_recommendations: int = 0
     finops_recommendations: int = 0
     secops_recommendations: int = 0
+    correlated_alerts: List[Dict[str, Any]] = []
     last_sync: Optional[str] = None
 
 class SyncResult(BaseModel):
@@ -331,6 +335,50 @@ async def detect_anomalies(instances: List[Dict], previous_instances: List[Dict]
     
     return anomalies
 
+# ==================== CORRELATED ALERTS ====================
+
+async def fetch_correlated_alerts(limit: int = 100) -> List[Dict[str, Any]]:
+    """Find instances with both cost anomalies and security issues"""
+    problematic = await db.instances.find(
+        {"state": "stopped", "public_ip": {"$ne": None}},
+        {"_id": 0}
+    ).to_list(limit)
+
+    if not problematic:
+        return []
+
+    instance_ids = [inst["instance_id"] for inst in problematic]
+    recommendations = await db.recommendations.find(
+        {
+            "resource_id": {"$in": instance_ids},
+            "category": {"$in": ["finops", "secops"]},
+            "status": "open",
+        },
+        {"_id": 0}
+    ).to_list(2000)
+
+    recs_by_resource: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for rec in recommendations:
+        recs_by_resource.setdefault(rec["resource_id"], {})[rec["category"]] = rec
+
+    alerts = []
+    for inst in problematic:
+        resource_recs = recs_by_resource.get(inst["instance_id"], {})
+        finops_rec = resource_recs.get("finops")
+        secops_rec = resource_recs.get("secops")
+
+        if finops_rec and secops_rec:
+            alerts.append({
+                "id": inst["instance_id"],
+                "title": f"Instance {inst.get('name') or inst['instance_id']} has BOTH cost and security issues",
+                "description": f"FinOps: {finops_rec['title']}. SecOps: {secops_rec['title']}",
+                "cost_impact": 5.0,
+                "security_severity": secops_rec["severity"],
+                "instance": inst
+            })
+
+    return alerts
+
 # ==================== ALERTS ENDPOINTS ====================
 
 class Alert(BaseModel):
@@ -418,7 +466,11 @@ async def create_cloud_account(input_data: CloudAccountCreate):
     )
     
     doc = account.model_dump()
-    doc["credentials"] = input_data.credentials  # Store credentials (hackathon only!)
+    try:
+        doc["credentials"] = encrypt_credentials(input_data.credentials)
+    except ValueError as exc:
+        logger.warning("Storing plaintext credentials: %s", exc)
+        doc["credentials"] = input_data.credentials
     await db.cloud_accounts.insert_one(doc)
     
     await log_audit_event("cloud_account.created", "cloud_account", account.id, {"provider": input_data.provider.value})
@@ -718,7 +770,68 @@ async def run_recommendations():
     
     return {"success": True, "recommendations_generated": len(recommendations)}
 
+# ----- Remediation -----
+
+@api_router.post("/remediation/analyze")
+async def analyze_remediations(dry_run: bool = True):
+    """Analyze and generate remediation actions"""
+    engine = RemediationEngine(db)
+    actions = await engine.analyze_and_remediate(dry_run=dry_run)
+    return {"success": True, "actions": actions, "count": len(actions)}
+
+
+@api_router.get("/remediation/actions")
+async def list_remediation_actions(status: Optional[str] = None):
+    """List all remediation actions"""
+    query = {"status": status} if status else {}
+    actions = await db.remediation_actions.find(query, {"_id": 0}).to_list(1000)
+    return actions
+
+
+@api_router.post("/remediation/actions/{action_id}/approve")
+async def approve_remediation(action_id: str):
+    """Approve and execute a remediation action"""
+    engine = RemediationEngine(db)
+    result = await engine.execute_action(action_id, approved_by="api_user")
+    return result
+
+# ----- WAFR -----
+
+@api_router.post("/wafr/assess/{account_id}")
+async def run_wafr_assessment(account_id: str):
+    """Run AWS Well-Architected Review for an account"""
+    account = await db.cloud_accounts.find_one({"id": account_id})
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+    if account["provider"] != "aws":
+        raise HTTPException(status_code=400, detail="WAFR only supports AWS accounts")
+
+    credentials = decrypt_credentials(account["credentials"])
+    engine = WAFREngine(
+        credentials["access_key_id"],
+        credentials["secret_access_key"],
+        credentials.get("region", "us-east-1"),
+    )
+
+    results = await engine.run_wafr_assessment()
+
+    await db.wafr_assessments.insert_one(
+        {
+            "account_id": account_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "results": results,
+        }
+    )
+
+    return results
+
 # ----- Dashboard Stats -----
+
+@api_router.get("/dashboard/correlated-alerts")
+async def get_correlated_alerts():
+    """Find instances with both cost anomalies and security issues"""
+    alerts = await fetch_correlated_alerts()
+    return alerts
 
 @api_router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats():
@@ -751,6 +864,8 @@ async def get_dashboard_stats():
         sort=[("last_sync_at", -1)]
     )
     last_sync = last_sync_account.get("last_sync_at") if last_sync_account else None
+
+    correlated_alerts = await fetch_correlated_alerts(limit=100)
     
     return DashboardStats(
         total_instances=len(instances),
@@ -761,6 +876,7 @@ async def get_dashboard_stats():
         open_recommendations=open_recs,
         finops_recommendations=finops_recs,
         secops_recommendations=secops_recs,
+        correlated_alerts=correlated_alerts,
         last_sync=last_sync
     )
 

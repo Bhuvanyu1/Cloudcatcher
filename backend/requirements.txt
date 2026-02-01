@@ -25,3 +25,7 @@ python-multipart>=0.0.9
 jq>=1.6.0
 typer>=0.9.0
 emergentintegrations==0.1.0
+azure-identity>=1.16.0
+azure-mgmt-compute>=31.0.0
+google-cloud-compute>=1.16.0
+python-digitalocean>=1.17.0
