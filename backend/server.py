@@ -11,8 +11,6 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from remediation import RemediationEngine
-from credentials_encryption import decrypt_credentials
-from wafr import WAFREngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
