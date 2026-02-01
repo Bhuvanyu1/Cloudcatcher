@@ -455,7 +455,7 @@ async def create_cloud_account(input_data: CloudAccountCreate):
     )
     
     doc = account.model_dump()
-    doc["credentials"] = input_data.credentials  # Store credentials (hackathon only!)
+    doc["credentials"] = encrypt_credentials(input_data.credentials)
     await db.cloud_accounts.insert_one(doc)
     
     await log_audit_event("cloud_account.created", "cloud_account", account.id, {"provider": input_data.provider.value})
