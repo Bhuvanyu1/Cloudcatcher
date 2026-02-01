@@ -42,6 +42,8 @@ Providers: `aws`, `azure`
 ## Example Requests
 
 ### Health
+
+
 ```bash
 curl http://127.0.0.1:5050/health
 ```
