@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import boto3
 from azure.identity import ClientSecretCredential
@@ -118,8 +118,8 @@ class GCPConnector(CloudConnector):
                 if network_interfaces:
                     private_ip = network_interfaces[0].network_ip
                     for access_config in network_interfaces[0].access_configs or []:
-                        if access_config.nat_i_p:
-                            public_ip = access_config.nat_i_p
+                        if access_config.nat_ip:
+                            public_ip = access_config.nat_ip
                             break
                 instances.append(
                     {
@@ -133,7 +133,9 @@ class GCPConnector(CloudConnector):
                         "state": instance.status.lower() if instance.status else None,
                         "public_ip": public_ip,
                         "private_ip": private_ip,
-                        "tags": {"items": instance.tags.items} if instance.tags and instance.tags.items else {},
+                        "tags": {"items": ",".join(instance.tags.items)}
+                        if instance.tags and instance.tags.items
+                        else {},
                         "raw": instance.to_dict() if hasattr(instance, "to_dict") else {},
                         "first_seen_at": now,
                         "last_seen_at": now,
@@ -173,7 +175,7 @@ class DigitalOceanConnector(CloudConnector):
                     "state": getattr(droplet, "status", None),
                     "public_ip": public_ip,
                     "private_ip": private_ip,
-                    "tags": {"items": getattr(droplet, "tags", []) or []},
+                    "tags": {"items": ",".join(getattr(droplet, "tags", []) or [])},
                     "raw": droplet.__dict__,
                     "first_seen_at": now,
                     "last_seen_at": now,
