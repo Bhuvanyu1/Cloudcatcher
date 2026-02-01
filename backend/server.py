@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from remediation import RemediationEngine
+from credentials_encryption import encrypt_credentials, decrypt_credentials
+from wafr import WAFREngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -97,8 +99,8 @@ class Instance(BaseModel):
     state: Optional[str] = None
     public_ip: Optional[str] = None
     private_ip: Optional[str] = None
-    tags: Dict[str, str] = {}
-    raw: Dict[str, Any] = {}
+    tags: Dict[str, str] = Field(default_factory=dict)
+    raw: Dict[str, Any] = Field(default_factory=dict)
     first_seen_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_seen_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -114,7 +116,7 @@ class Recommendation(BaseModel):
     severity: RecommendationSeverity
     title: str
     description: str
-    evidence: Dict[str, Any] = {}
+    evidence: Dict[str, Any] = Field(default_factory=dict)
     status: RecommendationStatus = RecommendationStatus.OPEN
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -124,26 +126,26 @@ class AuditEvent(BaseModel):
     event_type: str
     entity_type: str
     entity_id: Optional[str] = None
-    payload: Dict[str, Any] = {}
+    payload: Dict[str, Any] = Field(default_factory=dict)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class DashboardStats(BaseModel):
     total_instances: int = 0
     total_accounts: int = 0
-    accounts_by_provider: Dict[str, int] = {}
-    instances_by_provider: Dict[str, int] = {}
-    instances_by_state: Dict[str, int] = {}
+    accounts_by_provider: Dict[str, int] = Field(default_factory=dict)
+    instances_by_provider: Dict[str, int] = Field(default_factory=dict)
+    instances_by_state: Dict[str, int] = Field(default_factory=dict)
     open_recommendations: int = 0
     finops_recommendations: int = 0
     secops_recommendations: int = 0
-    correlated_alerts: List[Dict[str, Any]] = []
+    correlated_alerts: List[Dict[str, Any]] = Field(default_factory=list)
     last_sync: Optional[str] = None
 
 class SyncResult(BaseModel):
     success: bool
     accounts_synced: int
     instances_found: int
-    errors: List[str] = []
+    errors: List[str] = Field(default_factory=list)
     timestamp: str
 
 # ==================== MOCK DATA GENERATOR ====================
@@ -377,7 +379,7 @@ class Alert(BaseModel):
     alert_type: str
     severity: str
     resource_id: Optional[str] = None
-    payload: Dict[str, Any] = {}
+    payload: Dict[str, Any] = Field(default_factory=dict)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class WebhookAlert(BaseModel):
@@ -385,7 +387,7 @@ class WebhookAlert(BaseModel):
     alert_type: str
     severity: str = "medium"
     resource_id: Optional[str] = None
-    payload: Dict[str, Any] = {}
+    payload: Dict[str, Any] = Field(default_factory=dict)
 
 @api_router.get("/alerts", response_model=List[Alert])
 async def list_alerts(
