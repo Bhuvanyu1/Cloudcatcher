@@ -1051,6 +1051,66 @@ async def list_audit_events(limit: int = Query(default=50, le=200)):
     events = await db.audit_events.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return events
 
+# ----- Scheduler -----
+
+@api_router.get("/scheduler/jobs")
+async def list_scheduled_jobs(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """List all scheduled jobs (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return get_scheduled_jobs()
+
+@api_router.post("/scheduler/trigger/{job_id}")
+async def trigger_scheduled_job(
+    job_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Manually trigger a scheduled job (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        result = trigger_job_now(job_id)
+        await log_audit_event("scheduler.job_triggered", "scheduler", job_id, {"triggered_by": current_user["id"]})
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ----- Email Test -----
+
+@api_router.post("/email/test")
+async def send_test_email(
+    email: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Send a test email (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Fetch user details
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Send test sync notification
+    result = await email_service.send_sync_complete_notification(
+        to=email,
+        name=user["name"],
+        accounts_synced=2,
+        instances_found=15,
+        new_recommendations=5
+    )
+    
+    await log_audit_event("email.test_sent", "email", None, {"to": email, "result": result})
+    
+    return result
+
 # Include the router in the main app
 app.include_router(api_router)
 
