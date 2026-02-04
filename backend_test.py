@@ -31,10 +31,14 @@ class CloudWatcherAPITester:
             "details": details
         })
 
-    def run_test(self, name: str, method: str, endpoint: str, expected_status: int, data: Dict = None, params: Dict = None) -> tuple:
+    def run_test(self, name: str, method: str, endpoint: str, expected_status: int, data: Dict = None, params: Dict = None, auth_required: bool = False) -> tuple:
         """Run a single API test"""
         url = f"{self.api_base}/{endpoint}"
         headers = {'Content-Type': 'application/json'}
+        
+        # Add auth header if required and token available
+        if auth_required and self.auth_token:
+            headers['Authorization'] = f'Bearer {self.auth_token}'
         
         try:
             if method == 'GET':
