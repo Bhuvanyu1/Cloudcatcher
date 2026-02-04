@@ -32,6 +32,11 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 - Identify security misconfigurations
 - Monitor production environment risks
 
+### Remediation & WAFR
+- Generate remediation actions for idle resources and approve execution flows
+- Run AWS Well-Architected Framework Review (WAFR) assessments for AWS accounts
+- Correlate cost + security alerts for at-risk resources
+
 ### Anomaly Detection & Alerts
 - Detect unusual inventory changes
 - Webhook ingestion for external alerts
@@ -123,10 +128,23 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 | POST | `/api/alerts/webhook` | Ingest external alert |
 | POST | `/api/alerts/detect` | Run anomaly detection |
 
+### Remediation
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/remediation/analyze` | Analyze and generate remediation actions |
+| GET | `/api/remediation/actions` | List remediation actions |
+| POST | `/api/remediation/actions/{action_id}/approve` | Approve and execute action |
+
+### WAFR (AWS)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/wafr/assess/{account_id}` | Run WAFR assessment for an AWS account |
+
 ### Dashboard
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/dashboard/stats` | Get dashboard statistics |
+| GET | `/api/dashboard/correlated-alerts` | List correlated cost + security alerts |
 
 ## Installation
 
@@ -170,17 +188,7 @@ yarn start
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
 CORS_ORIGINS=*
-
-# JWT Configuration
-JWT_SECRET_KEY=your-secret-key-change-in-production
-
-# Email Configuration (Resend)
-RESEND_API_KEY=re_xxxxxxxxxxxxx
-SENDER_EMAIL=notifications@yourdomain.com
-APP_URL=https://yourdomain.com
-
-# Scheduler Configuration
-SYNC_INTERVAL_MINUTES=60
+ENCRYPTION_KEY=base64-encoded-32-byte-key
 ```
 
 ### Frontend (`/frontend/.env`)
@@ -241,55 +249,11 @@ curl -X POST http://localhost:8001/api/alerts/webhook \
   }'
 ```
 
-## Cloud Provider Credentials
+### WAFR Assessment (AWS)
 
-### AWS (boto3)
-```json
-{
-  "access_key_id": "AKIAIOSFODNN7EXAMPLE",
-  "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-  "region": "us-east-1",
-  "regions": ["us-east-1", "us-west-2", "eu-west-1"]  // Optional: scan multiple regions
-}
+```bash
+curl -X POST http://localhost:8001/api/wafr/assess/{account_id}
 ```
-Required IAM permissions: `ec2:DescribeInstances`
-
-### Azure (azure-mgmt-compute)
-```json
-{
-  "tenant_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "client_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "client_secret": "your-client-secret",
-  "subscription_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
-```
-Required permissions: `Virtual Machine Contributor` or custom role with `Microsoft.Compute/virtualMachines/read`
-
-### GCP (google-cloud-compute)
-```json
-{
-  "project_id": "your-project-id",
-  "service_account_json": {
-    "type": "service_account",
-    "project_id": "your-project-id",
-    "private_key_id": "...",
-    "private_key": "-----BEGIN PRIVATE KEY-----\n...",
-    "client_email": "service-account@project.iam.gserviceaccount.com",
-    "client_id": "...",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token"
-  }
-}
-```
-Required permissions: `compute.instances.list` (Compute Viewer role)
-
-### DigitalOcean
-```json
-{
-  "token": "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-}
-```
-Required scopes: `read` access
 
 ## Supported Cloud Providers
 
