@@ -154,11 +154,10 @@ class CloudWatcherV21Tester:
         # 6. Email service endpoint POST /api/email/test (requires auth)
         print("\n6️⃣ Testing email service endpoint...")
         if self.auth_token:
-            email_data = {
-                "email": "test@example.com"
-            }
+            # Email should be passed as query parameter
+            params = {"email": "test@example.com"}
             
-            success, response = self.run_test("Email Service", "POST", "email/test", 200, email_data, auth_required=True)
+            success, response = self.run_test("Email Service", "POST", "email/test", 200, params=params, auth_required=True)
             if success:
                 if response.get('mock'):
                     print(f"   📧 Email service (mocked): {response.get('message', 'No message')}")
