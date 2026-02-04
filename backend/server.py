@@ -111,6 +111,49 @@ class RecommendationStatus(str, Enum):
     DISMISSED = "dismissed"
     RESOLVED = "resolved"
 
+# ==================== AUTH MODELS ====================
+
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    name: str
+    organization_name: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
+
+class User(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    organization_id: Optional[str] = None
+    email_verified: bool = False
+    created_at: str
+    last_login_at: Optional[str] = None
+
+class Organization(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    settings: Dict[str, Any] = {}
+
+class Tenant(BaseModel):
+    id: str
+    name: str
+    msp_organization_id: str
+    settings: Dict[str, Any] = {}
+    status: str = "active"
+    created_at: str
+
 # ==================== MODELS ====================
 
 class CloudAccountCreate(BaseModel):
