@@ -349,17 +349,18 @@ The application features a neo-brutalist design with:
 - [x] Anomaly detection engine
 - [x] Webhook alert ingestion
 
-### In Progress
-- [ ] Real cloud provider API integration
-- [ ] Scheduled auto-sync (cron jobs)
-- [ ] Secure credential encryption (KMS/Vault)
+### Completed (v2.1)
+- [x] Real cloud provider integrations (AWS EC2, Azure VMs, GCP Compute, DigitalOcean)
+- [x] Scheduled auto-sync (APScheduler - configurable interval)
+- [x] Email notifications (Resend - verification, password reset, alerts)
 
 ### Planned
-- [ ] Cost analytics dashboard
-- [ ] Email/Slack notifications
+- [ ] Cost analytics dashboard with real billing data
+- [ ] Slack/Teams notifications
 - [ ] Custom recommendation rules
 - [ ] Multi-tenant MSP support
 - [ ] Compliance bundles (SOC2, HIPAA, PCI-DSS)
+- [ ] Terraform/CloudFormation remediation
 
 ## License
 
