@@ -295,58 +295,70 @@ class CloudWatcherAPITester:
         )
 
     def run_comprehensive_test(self):
-        """Run comprehensive API test suite"""
-        print("🚀 Starting Cloud Watcher API Tests...")
+        """Run comprehensive API test suite for Cloud Watcher v2.1"""
+        print("🚀 Starting Cloud Watcher v2.1 API Tests...")
         print(f"🌐 Testing against: {self.base_url}")
         print("=" * 60)
 
-        # 1. Health Check
+        # 1. Health Check - should return version 2.0.0
         self.test_health_check()
 
-        # 2. Dashboard Stats (initial state)
+        # 2. Login with demo credentials
+        self.test_login_demo_credentials()
+
+        # 3. Test scheduler jobs (requires auth)
+        self.test_scheduler_jobs()
+
+        # 4. Dashboard Stats (backend API for dashboard)
         self.test_dashboard_stats()
 
-        # 3. Create cloud accounts for different providers
+        # 5. Sync endpoint - attempts real cloud API calls
+        self.test_sync_real_cloud_apis()
+
+        # 6. Email service test (requires auth)
+        self.test_email_service()
+
+        # 7. Additional comprehensive tests
+        print("\n📋 Running additional comprehensive tests...")
+        
+        # Create test accounts for different providers
         aws_account_id = self.test_create_cloud_account("aws")
         azure_account_id = self.test_create_cloud_account("azure")
         gcp_account_id = self.test_create_cloud_account("gcp")
 
-        # 4. List accounts
+        # List accounts
         self.test_list_cloud_accounts()
 
-        # 5. Get specific account
+        # Get specific account
         if aws_account_id:
             self.test_get_cloud_account(aws_account_id)
 
-        # 6. Sync all accounts (generates mock data)
-        self.test_sync_all_accounts()
-
-        # 7. Sync single account
+        # Sync single account
         if aws_account_id:
             self.test_sync_single_account(aws_account_id)
 
-        # 8. Test instances endpoints
+        # Test instances endpoints
         self.test_list_instances()
         self.test_list_instances_with_filters()
 
-        # 9. Test recommendations
+        # Test recommendations
         self.test_list_recommendations()
         self.test_run_recommendations()
         self.test_list_recommendations_by_category()
 
-        # 10. Test recommendation status update (if we have recommendations)
+        # Test recommendation status update (if we have recommendations)
         success, recs = self.run_test("Get Recommendations for Update Test", "GET", "recommendations", 200, params={"limit": 1})
         if success and recs and len(recs) > 0:
             rec_id = recs[0].get('id')
             if rec_id:
                 self.test_update_recommendation_status(rec_id)
 
-        # 11. Dashboard stats after data creation
+        # Final dashboard stats
         success, stats = self.test_dashboard_stats()
         if success:
             print(f"   📈 Final Stats: {stats.get('total_instances', 0)} instances, {stats.get('total_accounts', 0)} accounts")
 
-        # 12. Cleanup - delete created accounts
+        # Cleanup - delete created accounts
         for account_id in self.created_accounts:
             self.test_delete_cloud_account(account_id)
 
