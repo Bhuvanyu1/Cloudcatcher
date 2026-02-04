@@ -54,6 +54,7 @@ export default function Layout() {
   const location = useLocation();
   const [syncing, setSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const user = getUser();
 
   const handleSync = async () => {
     setSyncing(true);
@@ -73,6 +74,10 @@ export default function Layout() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
