@@ -6,12 +6,23 @@ import {
   AlertTriangle, 
   RefreshCw,
   Menu,
-  X
+  X,
+  LogOut,
+  User,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { syncAllAccounts } from "@/lib/api";
 import { toast } from "sonner";
 import { useState } from "react";
+import { getUser, logout } from "@/components/ProtectedRoute";
 
 // Provider icons as colored text badges
 const ProviderIcon = ({ provider, className = "" }) => {
