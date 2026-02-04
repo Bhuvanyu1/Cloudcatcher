@@ -279,14 +279,26 @@ The application features a neo-brutalist design with:
 
 ## Roadmap
 
+### Completed (v2.0)
+- [x] JWT authentication with refresh tokens
+- [x] Role-based access control (RBAC)
+- [x] User management (admin panel)
+- [x] Audit logging
+- [x] WebSocket support for real-time updates
+- [x] Anomaly detection engine
+- [x] Webhook alert ingestion
+
+### In Progress
 - [ ] Real cloud provider API integration
 - [ ] Scheduled auto-sync (cron jobs)
 - [ ] Secure credential encryption (KMS/Vault)
-- [ ] User authentication (JWT/OAuth)
+
+### Planned
 - [ ] Cost analytics dashboard
 - [ ] Email/Slack notifications
 - [ ] Custom recommendation rules
-- [ ] Multi-tenant support
+- [ ] Multi-tenant MSP support
+- [ ] Compliance bundles (SOC2, HIPAA, PCI-DSS)
 
 ## License
 
