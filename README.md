@@ -2,12 +2,19 @@
 
 A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP Compute Engine, and DigitalOcean Droplets into a single dashboard with FinOps and SecOps recommendations.
 
+![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=flat-square)
 ![Dashboard](https://img.shields.io/badge/Dashboard-Neo--Brutalist-black?style=flat-square)
 ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square)
 ![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=flat-square)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?style=flat-square)
 
 ## Features
+
+### Authentication & Security (v2.0)
+- **JWT Authentication**: Secure login with access and refresh tokens
+- **Role-Based Access Control (RBAC)**: User, Admin, MSP Admin roles
+- **User Management**: Admin panel for managing team members
+- **Audit Logging**: Complete activity trail for compliance
 
 ### Core Functionality
 - **Multi-Cloud Support**: Connect and manage AWS, Azure, GCP, and DigitalOcean accounts
