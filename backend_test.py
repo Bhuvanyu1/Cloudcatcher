@@ -14,6 +14,7 @@ class CloudWatcherAPITester:
         self.tests_passed = 0
         self.test_results = []
         self.created_accounts = []
+        self.auth_token = None
 
     def log_test(self, name: str, success: bool, details: str = ""):
         """Log test result"""
