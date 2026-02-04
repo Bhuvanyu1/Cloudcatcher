@@ -129,7 +129,7 @@ export default function Layout() {
         </nav>
 
         {/* Sync Button */}
-        <div className="p-4 border-t-2 border-border">
+        <div className="p-4 border-t-2 border-border space-y-3">
           <Button
             onClick={handleSync}
             disabled={syncing}
@@ -139,6 +139,32 @@ export default function Layout() {
             <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "SYNCING..." : "SYNC ALL"}
           </Button>
+          
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full border-2 border-border justify-start gap-2"
+                data-testid="user-menu-btn"
+              >
+                <User className="w-4 h-4" />
+                <span className="truncate text-xs">{user?.name || "User"}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card border-2 border-border">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-bold">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="text-xs text-primary uppercase mt-1">{user?.role}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 
