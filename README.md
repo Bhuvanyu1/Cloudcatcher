@@ -73,6 +73,21 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 |--------|----------|-------------|
 | GET | `/api/health` | Health check |
 
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login with email/password |
+| POST | `/api/auth/logout` | Logout and invalidate tokens |
+| POST | `/api/auth/refresh` | Refresh access token |
+| GET | `/api/auth/me` | Get current user profile |
+
+### Users (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/users` | List organization users |
+| DELETE | `/api/users/{id}` | Delete a user |
+
 ### Cloud Accounts
 | Method | Endpoint | Description |
 |--------|----------|-------------|
