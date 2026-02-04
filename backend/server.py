@@ -749,7 +749,7 @@ async def delete_cloud_account(account_id: str):
 
 @api_router.post("/sync", response_model=SyncResult)
 async def sync_all_accounts():
-    """Sync inventory from all connected cloud accounts (uses mock data for demo)"""
+    """Sync inventory from all connected cloud accounts using real cloud provider APIs"""
     accounts = await db.cloud_accounts.find({"status": {"$ne": "disabled"}}).to_list(100)
     
     if not accounts:
@@ -762,6 +762,7 @@ async def sync_all_accounts():
         )
     
     total_instances = 0
+    total_recommendations = 0
     errors = []
     
     await log_audit_event("sync.started", "system", payload={"account_count": len(accounts)})
@@ -774,10 +775,13 @@ async def sync_all_accounts():
                 {"$set": {"status": "syncing", "last_checked_at": datetime.now(timezone.utc).isoformat()}}
             )
             
-            # Generate mock instances (in real implementation, call actual cloud APIs)
-            import random
-            instance_count = random.randint(3, 10)
-            instances = generate_mock_instances(account["id"], CloudProvider(account["provider"]), instance_count)
+            # Fetch instances using real cloud connectors
+            credentials = account.get("credentials", {})
+            instances = await fetch_instances(
+                provider=account["provider"],
+                credentials=credentials,
+                account_id=account["id"]
+            )
             
             # Clear old instances for this account
             await db.instances.delete_many({"cloud_account_id": account["id"]})
@@ -795,6 +799,7 @@ async def sync_all_accounts():
             # Insert new recommendations
             if recommendations:
                 await db.recommendations.insert_many(recommendations)
+                total_recommendations += len(recommendations)
             
             # Update account status
             await db.cloud_accounts.update_one(
@@ -810,6 +815,7 @@ async def sync_all_accounts():
             )
             
             total_instances += len(instances)
+            logger.info(f"Synced account {account['id']} ({account['provider']}): {len(instances)} instances")
             
         except Exception as e:
             logger.error(f"Error syncing account {account['id']}: {str(e)}")
@@ -820,9 +826,20 @@ async def sync_all_accounts():
             )
     
     await log_audit_event("sync.completed", "system", payload={
-        "accounts_synced": len(accounts),
+        "accounts_synced": len(accounts) - len(errors),
         "instances_found": total_instances,
+        "recommendations_generated": total_recommendations,
         "errors": errors
+    })
+    
+    # Notify WebSocket clients
+    await ws_manager.broadcast({
+        "type": "sync_complete",
+        "data": {
+            "accounts_synced": len(accounts) - len(errors),
+            "instances_found": total_instances,
+            "recommendations": total_recommendations
+        }
     })
     
     return SyncResult(
