@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import CloudAccounts from "@/pages/CloudAccounts";
 import Inventory from "@/pages/Inventory";
 import Recommendations from "@/pages/Recommendations";
+import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 
@@ -37,6 +38,7 @@ function App() {
             <Route path="accounts" element={<CloudAccounts />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="recommendations" element={<Recommendations />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>
