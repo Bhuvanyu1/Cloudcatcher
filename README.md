@@ -241,6 +241,56 @@ curl -X POST http://localhost:8001/api/alerts/webhook \
   }'
 ```
 
+## Cloud Provider Credentials
+
+### AWS (boto3)
+```json
+{
+  "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+  "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "region": "us-east-1",
+  "regions": ["us-east-1", "us-west-2", "eu-west-1"]  // Optional: scan multiple regions
+}
+```
+Required IAM permissions: `ec2:DescribeInstances`
+
+### Azure (azure-mgmt-compute)
+```json
+{
+  "tenant_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "client_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "client_secret": "your-client-secret",
+  "subscription_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+}
+```
+Required permissions: `Virtual Machine Contributor` or custom role with `Microsoft.Compute/virtualMachines/read`
+
+### GCP (google-cloud-compute)
+```json
+{
+  "project_id": "your-project-id",
+  "service_account_json": {
+    "type": "service_account",
+    "project_id": "your-project-id",
+    "private_key_id": "...",
+    "private_key": "-----BEGIN PRIVATE KEY-----\n...",
+    "client_email": "service-account@project.iam.gserviceaccount.com",
+    "client_id": "...",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token"
+  }
+}
+```
+Required permissions: `compute.instances.list` (Compute Viewer role)
+
+### DigitalOcean
+```json
+{
+  "token": "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+Required scopes: `read` access
+
 ## Supported Cloud Providers
 
 | Provider | Credentials Required |
@@ -249,8 +299,6 @@ curl -X POST http://localhost:8001/api/alerts/webhook \
 | Azure | Tenant ID, Client ID, Client Secret, Subscription ID |
 | GCP | Project ID, Service Account JSON |
 | DigitalOcean | Personal Access Token |
-
-> **Note**: Current implementation uses mock data for demo purposes. Real cloud provider SDKs can be integrated when credentials are provided.
 
 ## Data Models
 
