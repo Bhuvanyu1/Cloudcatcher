@@ -37,7 +37,7 @@ def get_scheduler() -> AsyncIOScheduler:
     return scheduler
 
 
-async def scheduled_sync_job(db, email_service=None):
+async def scheduled_sync_job(db, email_service=None, notification_service=None):
     """
     Scheduled job to sync all cloud accounts
     This function will be called by the scheduler
@@ -161,6 +161,21 @@ async def scheduled_sync_job(db, email_service=None):
                             alerts=high_severity[:5]  # Send top 5
                         )
         
+        # Send Slack/Teams notifications for high severity recommendations
+        if notification_service and total_recommendations > 0:
+            high_severity_count = len(
+                await db.recommendations.find(
+                    {"severity": "high", "status": "open"},
+                    {"_id": 0}
+                ).to_list(100)
+            )
+            if high_severity_count > 0:
+                await notification_service.send_recommendation_summary(
+                    total_recommendations=total_recommendations,
+                    high_severity_count=high_severity_count,
+                    accounts_synced=len(accounts) - len(errors)
+                )
+        
         logger.info(f"Scheduled sync completed: {total_instances} instances, {total_recommendations} recommendations")
         
     except Exception as e:
@@ -181,13 +196,14 @@ async def log_audit_event(db, event_type: str, entity_type: str, entity_id: str 
     await db.audit_events.insert_one(event)
 
 
-def setup_scheduler(db, email_service=None, sync_interval_minutes: int = None):
+def setup_scheduler(db, email_service=None, notification_service=None, sync_interval_minutes: int = None):
     """
     Setup and start the scheduler with default jobs
     
     Args:
         db: MongoDB database instance
         email_service: Optional email service for notifications
+        notification_service: Optional Slack/Teams notification service
         sync_interval_minutes: Sync interval in minutes (default: 60)
     """
     global scheduler
@@ -199,7 +215,7 @@ def setup_scheduler(db, email_service=None, sync_interval_minutes: int = None):
     sched.add_job(
         scheduled_sync_job,
         trigger=IntervalTrigger(minutes=interval),
-        args=[db, email_service],
+        args=[db, email_service, notification_service],
         id="scheduled_sync",
         name="Scheduled Inventory Sync",
         replace_existing=True
