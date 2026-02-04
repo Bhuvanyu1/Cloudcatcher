@@ -1062,6 +1062,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Initialize scheduler on startup"""
+    global auth_service
+    auth_service = AuthService(db)
+    
+    # Setup and start scheduler
+    sync_interval = int(os.environ.get("SYNC_INTERVAL_MINUTES", "60"))
+    setup_scheduler(db, email_service, sync_interval)
+    start_scheduler()
+    logger.info(f"CloudWatcher started with {sync_interval} minute sync interval")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Cleanup on shutdown"""
+    stop_scheduler()
     client.close()
+    logger.info("CloudWatcher shutdown complete")
