@@ -72,8 +72,101 @@ class CloudWatcherAPITester:
             return False, {}
 
     def test_health_check(self):
-        """Test health endpoint"""
-        return self.run_test("Health Check", "GET", "health", 200)
+        """Test health endpoint - should return version 2.0.0"""
+        success, response = self.run_test("Health Check", "GET", "health", 200)
+        if success:
+            version = response.get("version")
+            if version == "2.0.0":
+                print(f"   ✅ Version check passed: {version}")
+            else:
+                print(f"   ⚠️  Version mismatch: got {version}, expected 2.0.0")
+                success = False
+                self.log_test("Health Check Version", False, f"Expected version 2.0.0, got {version}")
+        return success, response
+
+    def test_login_demo_credentials(self):
+        """Test login with demo credentials: admin@cloudwatcher.com / Admin123!"""
+        login_data = {
+            "email": "admin@cloudwatcher.com",
+            "password": "Admin123!"
+        }
+        
+        success, response = self.run_test("Login Demo Credentials", "POST", "auth/login", 200, login_data)
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            user = response.get('user', {})
+            print(f"   👤 Logged in as: {user.get('name', 'Unknown')} ({user.get('role', 'Unknown')})")
+        return success, response
+
+    def test_scheduler_jobs(self):
+        """Test GET /api/scheduler/jobs returns scheduled sync job (requires auth)"""
+        success, response = self.run_test("Get Scheduled Jobs", "GET", "scheduler/jobs", 200, auth_required=True)
+        if success:
+            jobs = response if isinstance(response, list) else []
+            sync_job = next((job for job in jobs if 'sync' in job.get('name', '').lower()), None)
+            if sync_job:
+                print(f"   📅 Found sync job: {sync_job.get('name')} (next run: {sync_job.get('next_run', 'N/A')})")
+            else:
+                print(f"   ⚠️  No sync job found in {len(jobs)} jobs")
+        return success, response
+
+    def test_sync_real_cloud_apis(self):
+        """Test sync endpoint attempts real cloud API calls"""
+        success, response = self.run_test("Sync All Accounts (Real APIs)", "POST", "sync", 200)
+        if success:
+            accounts_synced = response.get('accounts_synced', 0)
+            instances_found = response.get('instances_found', 0)
+            errors = response.get('errors', [])
+            
+            print(f"   📊 Synced {accounts_synced} accounts, found {instances_found} instances")
+            if errors:
+                print(f"   ⚠️  Sync errors (expected with invalid credentials): {len(errors)} errors")
+                for error in errors[:3]:  # Show first 3 errors
+                    print(f"      - {error}")
+            
+            # Check if we have any accounts to test credential errors
+            self.test_cloud_accounts_credential_errors()
+        return success, response
+
+    def test_cloud_accounts_credential_errors(self):
+        """Test that cloud accounts with invalid credentials show error status after sync"""
+        success, accounts = self.run_test("List Cloud Accounts for Error Check", "GET", "cloud-accounts", 200)
+        if success:
+            error_accounts = [acc for acc in accounts if acc.get('status') == 'error']
+            connected_accounts = [acc for acc in accounts if acc.get('status') == 'connected']
+            
+            print(f"   🔍 Account status check: {len(error_accounts)} error, {len(connected_accounts)} connected")
+            
+            if error_accounts:
+                for acc in error_accounts[:2]:  # Show first 2 error accounts
+                    error_msg = acc.get('last_error', 'No error message')
+                    print(f"      - {acc.get('account_name', 'Unknown')}: {error_msg[:100]}")
+                    
+                    # Check if error is credential-related
+                    if any(keyword in error_msg.lower() for keyword in ['credential', 'auth', 'access', 'key', 'token']):
+                        self.log_test("Credential Error Detection", True, f"Found credential error: {error_msg[:50]}")
+                    else:
+                        self.log_test("Credential Error Detection", False, f"Error not credential-related: {error_msg[:50]}")
+        
+        return success, accounts
+
+    def test_email_service(self):
+        """Test email service endpoint POST /api/email/test (requires auth)"""
+        if not self.auth_token:
+            self.log_test("Email Service Test", False, "No auth token available")
+            return False, {}
+        
+        email_data = {
+            "email": "test@example.com"
+        }
+        
+        success, response = self.run_test("Email Service Test", "POST", "email/test", 200, email_data, auth_required=True)
+        if success:
+            if response.get('mock'):
+                print(f"   📧 Email service test (mocked): {response.get('message', 'No message')}")
+            else:
+                print(f"   📧 Email service test: {response.get('message', 'No message')}")
+        return success, response
 
     def test_dashboard_stats(self):
         """Test dashboard stats endpoint"""
