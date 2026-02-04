@@ -6,12 +6,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Set
 import uuid
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 import json
+import asyncio
 
 # Import auth module
 from auth import (
@@ -24,6 +25,15 @@ from auth import (
     filter_by_organization,
     security
 )
+
+# Import connectors
+from connectors import fetch_instances, get_connector
+
+# Import email service
+from email_service import email_service
+
+# Import scheduler
+from scheduler import setup_scheduler, start_scheduler, stop_scheduler, get_scheduled_jobs, trigger_job_now
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
