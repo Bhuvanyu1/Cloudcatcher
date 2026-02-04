@@ -14,6 +14,8 @@ from enum import Enum
 from remediation import RemediationEngine
 from credentials_encryption import encrypt_credentials, decrypt_credentials
 from wafr import WAFREngine
+from email_service import email_service
+from notification_service import notification_service
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -119,6 +121,11 @@ class TokenRefresh(BaseModel):
 class PasswordReset(BaseModel):
     token: str
     new_password: str
+
+
+class NotificationTestRequest(BaseModel):
+    channel: str = "all"
+    message: Optional[str] = None
 
 class User(BaseModel):
     id: str
@@ -1191,6 +1198,30 @@ async def send_test_email(
     
     return result
 
+# ----- Notification Test -----
+
+@api_router.post("/notifications/test")
+async def send_test_notification(
+    data: NotificationTestRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Send a test Slack/Teams notification (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    message = data.message or "CloudWatcher test notification"
+    results = {}
+
+    if data.channel in ["all", "slack"]:
+        results["slack"] = await notification_service.send_slack_message(message)
+    if data.channel in ["all", "teams"]:
+        results["teams"] = await notification_service.send_teams_message(message)
+
+    await log_audit_event("notification.test_sent", "notification", None, {"channel": data.channel, "results": results})
+
+    return {"success": True, "results": results}
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -1210,7 +1241,7 @@ async def startup_event():
     
     # Setup and start scheduler
     sync_interval = int(os.environ.get("SYNC_INTERVAL_MINUTES", "60"))
-    setup_scheduler(db, email_service, sync_interval)
+    setup_scheduler(db, email_service, notification_service, sync_interval)
     start_scheduler()
     logger.info(f"CloudWatcher started with {sync_interval} minute sync interval")
 

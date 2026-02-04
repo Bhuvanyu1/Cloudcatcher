@@ -189,6 +189,8 @@ MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
 CORS_ORIGINS=*
 ENCRYPTION_KEY=base64-encoded-32-byte-key
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/your/webhook/url
 ```
 
 ### Frontend (`/frontend/.env`)
@@ -317,10 +319,10 @@ The application features a neo-brutalist design with:
 - [x] Real cloud provider integrations (AWS EC2, Azure VMs, GCP Compute, DigitalOcean)
 - [x] Scheduled auto-sync (APScheduler - configurable interval)
 - [x] Email notifications (Resend - verification, password reset, alerts)
+- [x] Slack and Microsoft Teams notifications (webhook-based)
 
 ### Planned
 - [ ] Cost analytics dashboard with real billing data
-- [ ] Slack/Teams notifications
 - [ ] Custom recommendation rules
 - [ ] Multi-tenant MSP support
 - [ ] Compliance bundles (SOC2, HIPAA, PCI-DSS)
