@@ -497,7 +497,165 @@ async def run_anomaly_detection():
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"ok": True, "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"ok": True, "timestamp": datetime.now(timezone.utc).isoformat(), "version": "2.0.0"}
+
+# ----- Authentication -----
+
+@api_router.post("/auth/register")
+async def register_user(data: UserRegister):
+    """Register a new user"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    result = await auth_service.register_user(
+        email=data.email,
+        password=data.password,
+        name=data.name,
+        organization_name=data.organization_name
+    )
+    
+    await log_audit_event("user.registered", "user", result["id"], {"email": data.email})
+    
+    return result
+
+@api_router.post("/auth/login")
+async def login_user(data: UserLogin):
+    """Login with email and password"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    result = await auth_service.login(data.email, data.password)
+    
+    await log_audit_event("user.login", "user", result["user"]["id"], {"email": data.email})
+    
+    return result
+
+@api_router.post("/auth/logout")
+async def logout_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    refresh_token: Optional[str] = None
+):
+    """Logout and invalidate tokens"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    if credentials:
+        await auth_service.logout(credentials.credentials, refresh_token)
+    
+    return {"success": True, "message": "Logged out"}
+
+@api_router.post("/auth/refresh")
+async def refresh_tokens(data: TokenRefresh):
+    """Refresh access token"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.refresh_tokens(data.refresh_token)
+
+@api_router.post("/auth/verify-email")
+async def verify_email(token: str):
+    """Verify email address"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.verify_email(token)
+
+@api_router.post("/auth/request-password-reset")
+async def request_password_reset(email: str):
+    """Request password reset"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.request_password_reset(email)
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordReset):
+    """Reset password with token"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.reset_password(data.token, data.new_password)
+
+@api_router.get("/auth/me")
+async def get_current_user_profile(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get current user profile"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user = await get_current_user(credentials)
+    
+    # Fetch full user details
+    user_doc = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user_doc
+
+# ----- Users (Admin) -----
+
+@api_router.get("/users")
+async def list_users(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    limit: int = Query(default=50, le=200)
+):
+    """List users in organization (Admin only)"""
+    current_user = await get_current_user(credentials)
+    
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if current_user.get("organization_id"):
+        query["organization_id"] = current_user["organization_id"]
+    
+    users = await db.users.find(query, {"_id": 0, "password": 0}).limit(limit).to_list(limit)
+    return users
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete a user (Admin only)"""
+    current_user = await get_current_user(credentials)
+    
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Cannot delete yourself
+    if current_user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await log_audit_event("user.deleted", "user", user_id, {"deleted_by": current_user["id"]})
+    
+    return {"success": True}
+
+# ----- WebSocket -----
+
+@api_router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for real-time updates"""
+    await ws_manager.connect(websocket, user_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(websocket, user_id)
 
 # ----- Cloud Accounts -----
 
