@@ -48,6 +48,7 @@ const navItems = [
   { path: "/accounts", icon: Cloud, label: "ACCOUNTS" },
   { path: "/inventory", icon: Server, label: "INVENTORY" },
   { path: "/recommendations", icon: AlertTriangle, label: "RECOMMENDATIONS" },
+  { path: "/settings", icon: Settings, label: "SETTINGS" },
 ];
 
 export default function Layout() {
