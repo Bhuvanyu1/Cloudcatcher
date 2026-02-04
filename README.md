@@ -170,12 +170,25 @@ yarn start
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
 CORS_ORIGINS=*
+
+# JWT Configuration
+JWT_SECRET_KEY=your-secret-key-change-in-production
+
+# Email Configuration (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+SENDER_EMAIL=notifications@yourdomain.com
+APP_URL=https://yourdomain.com
+
+# Scheduler Configuration
+SYNC_INTERVAL_MINUTES=60
 ```
 
 ### Frontend (`/frontend/.env`)
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8001
 ```
+
+## Cloud Provider Credentials
 
 ## Usage
 
