@@ -148,6 +148,37 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 
 ## Installation
 
+### Deploying on an Existing Azure Free-Tier VM
+
+If you already have a free Azure VM and do not want to create a new one, use this path.
+
+1. Open **Azure Portal** → **Virtual Machines** → select your existing VM.
+2. Ensure the VM is in **Running** state (click **Start** if needed).
+3. Open **Networking** for that VM and verify inbound rules allow:
+   - **22** (SSH)
+   - **80** (HTTP)
+   - **443** (HTTPS, optional but recommended)
+4. Copy the VM **Public IP address** from the **Overview** tab.
+5. Connect from your local terminal:
+
+```bash
+ssh <vm-username>@<vm-public-ip>
+```
+
+Example:
+
+```bash
+ssh azureuser@20.115.10.42
+```
+
+6. Confirm you are connected:
+
+```bash
+hostname && whoami
+```
+
+7. Continue with backend/frontend setup from the sections below, but run commands directly on this VM.
+
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
