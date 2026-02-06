@@ -329,8 +329,24 @@ export default function Recommendations() {
                       </div>
                     </div>
 
-                    {/* Arrow */}
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {rec.status === "open" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusUpdate(rec.id, "dismissed");
+                          }}
+                          data-testid={`dismiss-rec-${rec.id}`}
+                          className="h-8 px-2 text-xs hover:bg-muted"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -2,12 +2,19 @@
 
 A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP Compute Engine, and DigitalOcean Droplets into a single dashboard with FinOps and SecOps recommendations.
 
+![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=flat-square)
 ![Dashboard](https://img.shields.io/badge/Dashboard-Neo--Brutalist-black?style=flat-square)
 ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square)
 ![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=flat-square)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?style=flat-square)
 
 ## Features
+
+### Authentication & Security (v2.0)
+- **JWT Authentication**: Secure login with access and refresh tokens
+- **Role-Based Access Control (RBAC)**: User, Admin, MSP Admin roles
+- **User Management**: Admin panel for managing team members
+- **Audit Logging**: Complete activity trail for compliance
 
 ### Core Functionality
 - **Multi-Cloud Support**: Connect and manage AWS, Azure, GCP, and DigitalOcean accounts
@@ -70,6 +77,21 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/health` | Health check |
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login with email/password |
+| POST | `/api/auth/logout` | Logout and invalidate tokens |
+| POST | `/api/auth/refresh` | Refresh access token |
+| GET | `/api/auth/me` | Get current user profile |
+
+### Users (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/users` | List organization users |
+| DELETE | `/api/users/{id}` | Delete a user |
 
 ### Cloud Accounts
 | Method | Endpoint | Description |
@@ -198,12 +220,16 @@ MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
 CORS_ORIGINS=*
 ENCRYPTION_KEY=base64-encoded-32-byte-key
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/your/webhook/url
 ```
 
 ### Frontend (`/frontend/.env`)
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8001
 ```
+
+## Cloud Provider Credentials
 
 ## Usage
 
@@ -271,8 +297,6 @@ curl -X POST http://localhost:8001/api/wafr/assess/{account_id}
 | GCP | Project ID, Service Account JSON |
 | DigitalOcean | Personal Access Token |
 
-> **Note**: Current implementation uses mock data for demo purposes. Real cloud provider SDKs can be integrated when credentials are provided.
-
 ## Data Models
 
 ### Instance (Normalized)
@@ -313,14 +337,27 @@ The application features a neo-brutalist design with:
 
 ## Roadmap
 
-- [ ] Real cloud provider API integration
-- [ ] Scheduled auto-sync (cron jobs)
-- [ ] Secure credential encryption (KMS/Vault)
-- [ ] User authentication (JWT/OAuth)
-- [ ] Cost analytics dashboard
-- [ ] Email/Slack notifications
+### Completed (v2.0)
+- [x] JWT authentication with refresh tokens
+- [x] Role-based access control (RBAC)
+- [x] User management (admin panel)
+- [x] Audit logging
+- [x] WebSocket support for real-time updates
+- [x] Anomaly detection engine
+- [x] Webhook alert ingestion
+
+### Completed (v2.1)
+- [x] Real cloud provider integrations (AWS EC2, Azure VMs, GCP Compute, DigitalOcean)
+- [x] Scheduled auto-sync (APScheduler - configurable interval)
+- [x] Email notifications (Resend - verification, password reset, alerts)
+- [x] Slack and Microsoft Teams notifications (webhook-based)
+
+### Planned
+- [ ] Cost analytics dashboard with real billing data
 - [ ] Custom recommendation rules
-- [ ] Multi-tenant support
+- [ ] Multi-tenant MSP support
+- [ ] Compliance bundles (SOC2, HIPAA, PCI-DSS)
+- [ ] Terraform/CloudFormation remediation
 
 ## License
 

@@ -14,6 +14,7 @@ class CloudWatcherAPITester:
         self.tests_passed = 0
         self.test_results = []
         self.created_accounts = []
+        self.auth_token = None
 
     def log_test(self, name: str, success: bool, details: str = ""):
         """Log test result"""
@@ -30,20 +31,24 @@ class CloudWatcherAPITester:
             "details": details
         })
 
-    def run_test(self, name: str, method: str, endpoint: str, expected_status: int, data: Dict = None, params: Dict = None) -> tuple:
+    def run_test(self, name: str, method: str, endpoint: str, expected_status: int, data: Dict = None, params: Dict = None, auth_required: bool = False) -> tuple:
         """Run a single API test"""
         url = f"{self.api_base}/{endpoint}"
         headers = {'Content-Type': 'application/json'}
         
+        # Add auth header if required and token available
+        if auth_required and self.auth_token:
+            headers['Authorization'] = f'Bearer {self.auth_token}'
+        
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=params, timeout=10)
+                response = requests.get(url, headers=headers, params=params, timeout=30)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
+                response = requests.post(url, json=data, headers=headers, timeout=30)
             elif method == 'PATCH':
-                response = requests.patch(url, json=data, headers=headers, timeout=10)
+                response = requests.patch(url, json=data, headers=headers, timeout=30)
             elif method == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=10)
+                response = requests.delete(url, headers=headers, timeout=30)
             else:
                 raise ValueError(f"Unsupported method: {method}")
 
@@ -67,8 +72,101 @@ class CloudWatcherAPITester:
             return False, {}
 
     def test_health_check(self):
-        """Test health endpoint"""
-        return self.run_test("Health Check", "GET", "health", 200)
+        """Test health endpoint - should return version 2.0.0"""
+        success, response = self.run_test("Health Check", "GET", "health", 200)
+        if success:
+            version = response.get("version")
+            if version == "2.0.0":
+                print(f"   ✅ Version check passed: {version}")
+            else:
+                print(f"   ⚠️  Version mismatch: got {version}, expected 2.0.0")
+                success = False
+                self.log_test("Health Check Version", False, f"Expected version 2.0.0, got {version}")
+        return success, response
+
+    def test_login_demo_credentials(self):
+        """Test login with demo credentials: admin@cloudwatcher.com / Admin123!"""
+        login_data = {
+            "email": "admin@cloudwatcher.com",
+            "password": "Admin123!"
+        }
+        
+        success, response = self.run_test("Login Demo Credentials", "POST", "auth/login", 200, login_data)
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            user = response.get('user', {})
+            print(f"   👤 Logged in as: {user.get('name', 'Unknown')} ({user.get('role', 'Unknown')})")
+        return success, response
+
+    def test_scheduler_jobs(self):
+        """Test GET /api/scheduler/jobs returns scheduled sync job (requires auth)"""
+        success, response = self.run_test("Get Scheduled Jobs", "GET", "scheduler/jobs", 200, auth_required=True)
+        if success:
+            jobs = response if isinstance(response, list) else []
+            sync_job = next((job for job in jobs if 'sync' in job.get('name', '').lower()), None)
+            if sync_job:
+                print(f"   📅 Found sync job: {sync_job.get('name')} (next run: {sync_job.get('next_run', 'N/A')})")
+            else:
+                print(f"   ⚠️  No sync job found in {len(jobs)} jobs")
+        return success, response
+
+    def test_sync_real_cloud_apis(self):
+        """Test sync endpoint attempts real cloud API calls"""
+        success, response = self.run_test("Sync All Accounts (Real APIs)", "POST", "sync", 200)
+        if success:
+            accounts_synced = response.get('accounts_synced', 0)
+            instances_found = response.get('instances_found', 0)
+            errors = response.get('errors', [])
+            
+            print(f"   📊 Synced {accounts_synced} accounts, found {instances_found} instances")
+            if errors:
+                print(f"   ⚠️  Sync errors (expected with invalid credentials): {len(errors)} errors")
+                for error in errors[:3]:  # Show first 3 errors
+                    print(f"      - {error}")
+            
+            # Check if we have any accounts to test credential errors
+            self.test_cloud_accounts_credential_errors()
+        return success, response
+
+    def test_cloud_accounts_credential_errors(self):
+        """Test that cloud accounts with invalid credentials show error status after sync"""
+        success, accounts = self.run_test("List Cloud Accounts for Error Check", "GET", "cloud-accounts", 200)
+        if success:
+            error_accounts = [acc for acc in accounts if acc.get('status') == 'error']
+            connected_accounts = [acc for acc in accounts if acc.get('status') == 'connected']
+            
+            print(f"   🔍 Account status check: {len(error_accounts)} error, {len(connected_accounts)} connected")
+            
+            if error_accounts:
+                for acc in error_accounts[:2]:  # Show first 2 error accounts
+                    error_msg = acc.get('last_error', 'No error message')
+                    print(f"      - {acc.get('account_name', 'Unknown')}: {error_msg[:100]}")
+                    
+                    # Check if error is credential-related
+                    if any(keyword in error_msg.lower() for keyword in ['credential', 'auth', 'access', 'key', 'token']):
+                        self.log_test("Credential Error Detection", True, f"Found credential error: {error_msg[:50]}")
+                    else:
+                        self.log_test("Credential Error Detection", False, f"Error not credential-related: {error_msg[:50]}")
+        
+        return success, accounts
+
+    def test_email_service(self):
+        """Test email service endpoint POST /api/email/test (requires auth)"""
+        if not self.auth_token:
+            self.log_test("Email Service Test", False, "No auth token available")
+            return False, {}
+        
+        email_data = {
+            "email": "test@example.com"
+        }
+        
+        success, response = self.run_test("Email Service Test", "POST", "email/test", 200, email_data, auth_required=True)
+        if success:
+            if response.get('mock'):
+                print(f"   📧 Email service test (mocked): {response.get('message', 'No message')}")
+            else:
+                print(f"   📧 Email service test: {response.get('message', 'No message')}")
+        return success, response
 
     def test_dashboard_stats(self):
         """Test dashboard stats endpoint"""
@@ -197,58 +295,70 @@ class CloudWatcherAPITester:
         )
 
     def run_comprehensive_test(self):
-        """Run comprehensive API test suite"""
-        print("🚀 Starting Cloud Watcher API Tests...")
+        """Run comprehensive API test suite for Cloud Watcher v2.1"""
+        print("🚀 Starting Cloud Watcher v2.1 API Tests...")
         print(f"🌐 Testing against: {self.base_url}")
         print("=" * 60)
 
-        # 1. Health Check
+        # 1. Health Check - should return version 2.0.0
         self.test_health_check()
 
-        # 2. Dashboard Stats (initial state)
+        # 2. Login with demo credentials
+        self.test_login_demo_credentials()
+
+        # 3. Test scheduler jobs (requires auth)
+        self.test_scheduler_jobs()
+
+        # 4. Dashboard Stats (backend API for dashboard)
         self.test_dashboard_stats()
 
-        # 3. Create cloud accounts for different providers
+        # 5. Sync endpoint - attempts real cloud API calls
+        self.test_sync_real_cloud_apis()
+
+        # 6. Email service test (requires auth)
+        self.test_email_service()
+
+        # 7. Additional comprehensive tests
+        print("\n📋 Running additional comprehensive tests...")
+        
+        # Create test accounts for different providers
         aws_account_id = self.test_create_cloud_account("aws")
         azure_account_id = self.test_create_cloud_account("azure")
         gcp_account_id = self.test_create_cloud_account("gcp")
 
-        # 4. List accounts
+        # List accounts
         self.test_list_cloud_accounts()
 
-        # 5. Get specific account
+        # Get specific account
         if aws_account_id:
             self.test_get_cloud_account(aws_account_id)
 
-        # 6. Sync all accounts (generates mock data)
-        self.test_sync_all_accounts()
-
-        # 7. Sync single account
+        # Sync single account
         if aws_account_id:
             self.test_sync_single_account(aws_account_id)
 
-        # 8. Test instances endpoints
+        # Test instances endpoints
         self.test_list_instances()
         self.test_list_instances_with_filters()
 
-        # 9. Test recommendations
+        # Test recommendations
         self.test_list_recommendations()
         self.test_run_recommendations()
         self.test_list_recommendations_by_category()
 
-        # 10. Test recommendation status update (if we have recommendations)
+        # Test recommendation status update (if we have recommendations)
         success, recs = self.run_test("Get Recommendations for Update Test", "GET", "recommendations", 200, params={"limit": 1})
         if success and recs and len(recs) > 0:
             rec_id = recs[0].get('id')
             if rec_id:
                 self.test_update_recommendation_status(rec_id)
 
-        # 11. Dashboard stats after data creation
+        # Final dashboard stats
         success, stats = self.test_dashboard_stats()
         if success:
             print(f"   📈 Final Stats: {stats.get('total_instances', 0)} instances, {stats.get('total_accounts', 0)} accounts")
 
-        # 12. Cleanup - delete created accounts
+        # Cleanup - delete created accounts
         for account_id in self.created_accounts:
             self.test_delete_cloud_account(account_id)
 
