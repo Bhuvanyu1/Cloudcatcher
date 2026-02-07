@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,13 +7,15 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from enum import Enum
 from remediation import RemediationEngine
 from credentials_encryption import encrypt_credentials, decrypt_credentials
 from wafr import WAFREngine
+from email_service import email_service
+from notification_service import notification_service
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -23,10 +26,13 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Create the main app
-app = FastAPI(title="Cloud Watcher API", version="1.0.0")
+app = FastAPI(title="Cloud Watcher API", version="2.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+# Initialize auth service (will be set after db initialization)
+auth_service = None
 
 # Configure logging
 logging.basicConfig(
@@ -34,6 +40,40 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ==================== WEBSOCKET MANAGER ====================
+
+class WebSocketManager:
+    def __init__(self):
+        self.active_connections: Dict[str, Set[WebSocket]] = {}
+    
+    async def connect(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        if user_id not in self.active_connections:
+            self.active_connections[user_id] = set()
+        self.active_connections[user_id].add(websocket)
+    
+    async def disconnect(self, websocket: WebSocket, user_id: str):
+        if user_id in self.active_connections:
+            self.active_connections[user_id].discard(websocket)
+    
+    async def send_to_user(self, message: dict, user_id: str):
+        if user_id in self.active_connections:
+            for connection in self.active_connections[user_id]:
+                try:
+                    await connection.send_json(message)
+                except:
+                    pass
+    
+    async def broadcast(self, message: dict):
+        for connections in self.active_connections.values():
+            for connection in connections:
+                try:
+                    await connection.send_json(message)
+                except:
+                    pass
+
+ws_manager = WebSocketManager()
 
 # ==================== ENUMS ====================
 
@@ -62,6 +102,54 @@ class RecommendationStatus(str, Enum):
     OPEN = "open"
     DISMISSED = "dismissed"
     RESOLVED = "resolved"
+
+# ==================== AUTH MODELS ====================
+
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    name: str
+    organization_name: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
+
+
+class NotificationTestRequest(BaseModel):
+    channel: str = "all"
+    message: Optional[str] = None
+
+class User(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    organization_id: Optional[str] = None
+    email_verified: bool = False
+    created_at: str
+    last_login_at: Optional[str] = None
+
+class Organization(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    settings: Dict[str, Any] = {}
+
+class Tenant(BaseModel):
+    id: str
+    name: str
+    msp_organization_id: str
+    settings: Dict[str, Any] = {}
+    status: str = "active"
+    created_at: str
 
 # ==================== MODELS ====================
 
@@ -442,7 +530,165 @@ async def run_anomaly_detection():
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"ok": True, "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"ok": True, "timestamp": datetime.now(timezone.utc).isoformat(), "version": "2.0.0"}
+
+# ----- Authentication -----
+
+@api_router.post("/auth/register")
+async def register_user(data: UserRegister):
+    """Register a new user"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    result = await auth_service.register_user(
+        email=data.email,
+        password=data.password,
+        name=data.name,
+        organization_name=data.organization_name
+    )
+    
+    await log_audit_event("user.registered", "user", result["id"], {"email": data.email})
+    
+    return result
+
+@api_router.post("/auth/login")
+async def login_user(data: UserLogin):
+    """Login with email and password"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    result = await auth_service.login(data.email, data.password)
+    
+    await log_audit_event("user.login", "user", result["user"]["id"], {"email": data.email})
+    
+    return result
+
+@api_router.post("/auth/logout")
+async def logout_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    refresh_token: Optional[str] = None
+):
+    """Logout and invalidate tokens"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    if credentials:
+        await auth_service.logout(credentials.credentials, refresh_token)
+    
+    return {"success": True, "message": "Logged out"}
+
+@api_router.post("/auth/refresh")
+async def refresh_tokens(data: TokenRefresh):
+    """Refresh access token"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.refresh_tokens(data.refresh_token)
+
+@api_router.post("/auth/verify-email")
+async def verify_email(token: str):
+    """Verify email address"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.verify_email(token)
+
+@api_router.post("/auth/request-password-reset")
+async def request_password_reset(email: str):
+    """Request password reset"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.request_password_reset(email)
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordReset):
+    """Reset password with token"""
+    global auth_service
+    if not auth_service:
+        auth_service = AuthService(db)
+    
+    return await auth_service.reset_password(data.token, data.new_password)
+
+@api_router.get("/auth/me")
+async def get_current_user_profile(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get current user profile"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user = await get_current_user(credentials)
+    
+    # Fetch full user details
+    user_doc = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user_doc
+
+# ----- Users (Admin) -----
+
+@api_router.get("/users")
+async def list_users(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    limit: int = Query(default=50, le=200)
+):
+    """List users in organization (Admin only)"""
+    current_user = await get_current_user(credentials)
+    
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if current_user.get("organization_id"):
+        query["organization_id"] = current_user["organization_id"]
+    
+    users = await db.users.find(query, {"_id": 0, "password": 0}).limit(limit).to_list(limit)
+    return users
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete a user (Admin only)"""
+    current_user = await get_current_user(credentials)
+    
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Cannot delete yourself
+    if current_user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await log_audit_event("user.deleted", "user", user_id, {"deleted_by": current_user["id"]})
+    
+    return {"success": True}
+
+# ----- WebSocket -----
+
+@api_router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for real-time updates"""
+    await ws_manager.connect(websocket, user_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(websocket, user_id)
 
 # ----- Cloud Accounts -----
 
@@ -526,7 +772,7 @@ async def delete_cloud_account(account_id: str):
 
 @api_router.post("/sync", response_model=SyncResult)
 async def sync_all_accounts():
-    """Sync inventory from all connected cloud accounts (uses mock data for demo)"""
+    """Sync inventory from all connected cloud accounts using real cloud provider APIs"""
     accounts = await db.cloud_accounts.find({"status": {"$ne": "disabled"}}).to_list(100)
     
     if not accounts:
@@ -539,6 +785,7 @@ async def sync_all_accounts():
         )
     
     total_instances = 0
+    total_recommendations = 0
     errors = []
     
     await log_audit_event("sync.started", "system", payload={"account_count": len(accounts)})
@@ -551,10 +798,13 @@ async def sync_all_accounts():
                 {"$set": {"status": "syncing", "last_checked_at": datetime.now(timezone.utc).isoformat()}}
             )
             
-            # Generate mock instances (in real implementation, call actual cloud APIs)
-            import random
-            instance_count = random.randint(3, 10)
-            instances = generate_mock_instances(account["id"], CloudProvider(account["provider"]), instance_count)
+            # Fetch instances using real cloud connectors
+            credentials = account.get("credentials", {})
+            instances = await fetch_instances(
+                provider=account["provider"],
+                credentials=credentials,
+                account_id=account["id"]
+            )
             
             # Clear old instances for this account
             await db.instances.delete_many({"cloud_account_id": account["id"]})
@@ -572,6 +822,7 @@ async def sync_all_accounts():
             # Insert new recommendations
             if recommendations:
                 await db.recommendations.insert_many(recommendations)
+                total_recommendations += len(recommendations)
             
             # Update account status
             await db.cloud_accounts.update_one(
@@ -587,6 +838,7 @@ async def sync_all_accounts():
             )
             
             total_instances += len(instances)
+            logger.info(f"Synced account {account['id']} ({account['provider']}): {len(instances)} instances")
             
         except Exception as e:
             logger.error(f"Error syncing account {account['id']}: {str(e)}")
@@ -597,9 +849,20 @@ async def sync_all_accounts():
             )
     
     await log_audit_event("sync.completed", "system", payload={
-        "accounts_synced": len(accounts),
+        "accounts_synced": len(accounts) - len(errors),
         "instances_found": total_instances,
+        "recommendations_generated": total_recommendations,
         "errors": errors
+    })
+    
+    # Notify WebSocket clients
+    await ws_manager.broadcast({
+        "type": "sync_complete",
+        "data": {
+            "accounts_synced": len(accounts) - len(errors),
+            "instances_found": total_instances,
+            "recommendations": total_recommendations
+        }
     })
     
     return SyncResult(
@@ -875,6 +1138,90 @@ async def list_audit_events(limit: int = Query(default=50, le=200)):
     events = await db.audit_events.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return events
 
+# ----- Scheduler -----
+
+@api_router.get("/scheduler/jobs")
+async def list_scheduled_jobs(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """List all scheduled jobs (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return get_scheduled_jobs()
+
+@api_router.post("/scheduler/trigger/{job_id}")
+async def trigger_scheduled_job(
+    job_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Manually trigger a scheduled job (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        result = trigger_job_now(job_id)
+        await log_audit_event("scheduler.job_triggered", "scheduler", job_id, {"triggered_by": current_user["id"]})
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ----- Email Test -----
+
+@api_router.post("/email/test")
+async def send_test_email(
+    email: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Send a test email (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Fetch user details
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Send test sync notification
+    result = await email_service.send_sync_complete_notification(
+        to=email,
+        name=user["name"],
+        accounts_synced=2,
+        instances_found=15,
+        new_recommendations=5
+    )
+    
+    await log_audit_event("email.test_sent", "email", None, {"to": email, "result": result})
+    
+    return result
+
+# ----- Notification Test -----
+
+@api_router.post("/notifications/test")
+async def send_test_notification(
+    data: NotificationTestRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Send a test Slack/Teams notification (Admin only)"""
+    current_user = await get_current_user(credentials)
+    if current_user["role"] not in ["admin", "msp_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    message = data.message or "CloudWatcher test notification"
+    results = {}
+
+    if data.channel in ["all", "slack"]:
+        results["slack"] = await notification_service.send_slack_message(message)
+    if data.channel in ["all", "teams"]:
+        results["teams"] = await notification_service.send_teams_message(message)
+
+    await log_audit_event("notification.test_sent", "notification", None, {"channel": data.channel, "results": results})
+
+    return {"success": True, "results": results}
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -886,6 +1233,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Initialize scheduler on startup"""
+    global auth_service
+    auth_service = AuthService(db)
+    
+    # Setup and start scheduler
+    sync_interval = int(os.environ.get("SYNC_INTERVAL_MINUTES", "60"))
+    setup_scheduler(db, email_service, notification_service, sync_interval)
+    start_scheduler()
+    logger.info(f"CloudWatcher started with {sync_interval} minute sync interval")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Cleanup on shutdown"""
+    stop_scheduler()
     client.close()
+    logger.info("CloudWatcher shutdown complete")
