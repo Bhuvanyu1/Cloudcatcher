@@ -16,7 +16,9 @@ from credentials_encryption import encrypt_credentials, decrypt_credentials
 from wafr import WAFREngine
 from email_service import email_service
 from notification_service import notification_service
-
+from auth import AuthService, get_current_user
+from scheduler import setup_scheduler, start_scheduler
+security = HTTPBearer()
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
