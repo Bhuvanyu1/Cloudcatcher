@@ -15,10 +15,12 @@ from remediation import RemediationEngine
 from credentials_encryption import encrypt_credentials, decrypt_credentials
 from wafr import WAFREngine
 from email_service import email_service
-from notification_service import notification_service
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+from notification_service import NotificationService
+notification_service = NotificationService()
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']

@@ -5,14 +5,14 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
-TEAMS_WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL")
-
 
 class NotificationService:
     def __init__(self) -> None:
-        self.slack_enabled = bool(SLACK_WEBHOOK_URL)
-        self.teams_enabled = bool(TEAMS_WEBHOOK_URL)
+        self.slack_webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
+        self.teams_webhook_url = os.environ.get("TEAMS_WEBHOOK_URL")
+
+        self.slack_enabled = bool(self.slack_webhook_url)
+        self.teams_enabled = bool(self.teams_webhook_url)
 
         if not self.slack_enabled:
             logger.warning("Slack notifications disabled: SLACK_WEBHOOK_URL not set")
@@ -27,7 +27,7 @@ class NotificationService:
         if context:
             payload["attachments"] = [{"fields": self._format_fields(context)}]
 
-        return await self._post_webhook(SLACK_WEBHOOK_URL, payload, "slack")
+        return await self._post_webhook(self.slack_webhook_url, payload, "slack")
 
     async def send_teams_message(self, text: str, context: Optional[Dict[str, Any]] = None) -> dict:
         if not self.teams_enabled:
@@ -39,7 +39,7 @@ class NotificationService:
                 {"facts": self._format_teams_facts(context)}
             ]
 
-        return await self._post_webhook(TEAMS_WEBHOOK_URL, payload, "teams")
+        return await self._post_webhook(self.teams_webhook_url, payload, "teams")
 
     async def send_recommendation_summary(
         self,
@@ -70,7 +70,10 @@ class NotificationService:
 
         return {"success": True, "results": results}
 
-    async def _post_webhook(self, url: str, payload: Dict[str, Any], channel: str) -> dict:
+    async def _post_webhook(self, url: Optional[str], payload: Dict[str, Any], channel: str) -> dict:
+        if not url:
+            return {"success": False, "message": f"{channel.title()} webhook URL not configured"}
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(url, json=payload)
         if response.status_code >= 400:
@@ -91,5 +94,3 @@ class NotificationService:
     def _format_teams_facts(context: Dict[str, Any]) -> list:
         return [{"name": key.replace("_", " ").title(), "value": str(value)} for key, value in context.items()]
 
-
-notification_service = NotificationService()
