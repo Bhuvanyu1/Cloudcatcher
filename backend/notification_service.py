@@ -94,5 +94,3 @@ class NotificationService:
     def _format_teams_facts(context: Dict[str, Any]) -> list:
         return [{"name": key.replace("_", " ").title(), "value": str(value)} for key, value in context.items()]
 
-
-notification_service = NotificationService()
