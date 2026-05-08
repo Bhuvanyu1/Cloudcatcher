@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 2%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 75 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 53%;
+    --accent: 300 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 10%;
+    --ring: 75 100% 50%;
+    --radius: 0rem;
+    --chart-1: 75 100% 50%;
+    --chart-2: 180 100% 50%;
+    --chart-3: 300 100% 50%;
+    --chart-4: 0 80% 60%;
+    --chart-5: 60 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Chivo', sans-serif;
+  }
+}
+
+/* Neo-brutalist scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+  border: 1px solid #333;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border: 1px solid #fff;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #CCFF00;
+}
+
+/* Utility classes for neo-brutalist design */
+.hard-shadow {
+  box-shadow: 4px 4px 0px 0px #fff;
+}
+
+.hard-shadow-sm {
+  box-shadow: 2px 2px 0px 0px #fff;
+}
+
+.hard-shadow-primary {
+  box-shadow: 4px 4px 0px 0px #CCFF00;
+}
+
+.hard-shadow-secondary {
+  box-shadow: 4px 4px 0px 0px #00FFFF;
+}
+
+.neon-glow {
+  box-shadow: 0px 0px 10px 0px rgba(204, 255, 0, 0.5);
+}
+
+.neon-glow-secondary {
+  box-shadow: 0px 0px 10px 0px rgba(0, 255, 255, 0.5);
+}
+
+/* Button press effect */
+.active-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: none !important;
+}
+
+/* Grid noise texture overlay */
+.noise-overlay {
+  position: relative;
+}
+
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@layer base {
+  [data-debug-wrapper="true"] {
+    display: contents !important;
+  }
+}
+
+/* Hide external badges */
+#emergent-badge,
+[id*="emergent"],
+a[href*="emergent.sh"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

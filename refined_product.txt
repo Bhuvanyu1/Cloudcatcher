@@ -1,0 +1,136 @@
+Project goal:
+Build a multi-cloud monitoring system for B2B SaaS that can fetch instances/VMs from multiple cloud providers, track their status, and scale efficiently.
+
+Core questions answered:
+1. How to get instances cheaply
+2. How to test scale cheaply and realistically
+
+Key architectural decision:
+Do not rely on creating lots of real VMs just for testing.
+Instead:
+- Use cloud provider control-plane APIs to fetch instance inventory and status
+- Keep only a very small real fleet for correctness testing
+- Use synthetic/mock data for large-scale testing
+
+Recommended approach for fetching instances:
+Use provider APIs instead of logging into instances or installing agents for the basic inventory/status layer.
+
+Examples:
+- AWS: DescribeInstances with pagination
+- Azure: Resource Graph / VM listing APIs
+- GCP: instances.aggregatedList
+- DigitalOcean: Droplet API
+
+Reason:
+This is much cheaper and better for scale than managing lots of real compute.
+
+Cheap dev/test fleet strategy:
+Create a tiny “canonical lab” across providers:
+- AWS: 2–3 small instances
+- Azure: 2 small VMs
+- GCP: 2–3 small VMs
+- DigitalOcean: 1–2 droplets
+- OCI: optional free-tier instances
+
+Use these only to test:
+- Authentication
+- Region/subscription/project scoping
+- Pagination
+- Instance state transitions (running/stopped/terminated)
+- Error handling and retries
+- Provider-specific normalization
+
+Main insight on cost:
+Do not scale by provisioning 10,000 real instances.
+Scale by testing:
+- API response handling
+- Queue throughput
+- DB upserts/writes
+- State-diff processing
+- Scheduler fan-out
+- Alert generation
+- Dashboard/API performance
+
+Suggested provider adapter interface:
+list_instances(account, cursor) -> [RawInstance], next_cursor
+get_instance_status(account, instance_id) -> RawStatus
+normalize(raw) -> NormalizedInstance
+
+Suggested normalized schema:
+- instance_uid
+- provider
+- account_id
+- project_or_subscription
+- region
+- zone
+- instance_id
+- name
+- machine_type
+- state
+- power_state
+- created_at
+- last_seen_at
+- tags
+- metadata_hash
+
+Three layers of testing:
+1. Adapter correctness testing
+   - Use small real fleets
+   - Validate provider auth, pagination, state mapping, retry/throttling behavior
+
+2. Synthetic scale testing
+   - Record or mock provider responses
+   - Generate fake fleets (10k, 100k, 1M instances)
+   - Feed them through the same normalization + ingestion pipeline
+
+3. Control-plane load testing
+   Load test the whole backend:
+   Scheduler -> provider adapters -> normalization -> queue -> DB -> alerting -> UI/API
+
+Important scale scenarios to test:
+- 100 accounts x 500 instances
+- 1,000 accounts x 100 instances
+- 10,000 accounts x 10 instances
+- 5% state changes per polling cycle
+- Provider throttling
+- Slow regions
+- Partial pagination failure
+- Duplicate jobs
+- Duplicate or changed instance metadata
+
+Important metrics to measure:
+- Poll cycle completion time
+- API calls per provider per minute
+- Retry rate
+- Queue lag
+- DB write latency
+- Memory per worker
+- Cost per 10k monitored instances
+- Alert delay from state change to notification
+
+Recommended rollout/testing stages:
+Stage 1:
+- Local testing
+- 1k synthetic instances
+- Validate normalization and ingestion logic
+
+Stage 2:
+- Staging
+- 10k–100k synthetic instances
+- Real queue + real DB
+- API load testing + failure injection
+
+Stage 3:
+- Production-like
+- Small real cloud fleet
+- Mostly synthetic scale
+- Shadow polling against real providers
+- Compare live provider counts vs stored counts
+
+Blunt conclusion:
+- Cheapest way to get instances: use provider APIs + a tiny real fleet
+- Cheapest way to test scale: use synthetic/mock fleets, not massive real infrastructure
+
+Implementation principle:
+Real cloud resources are for correctness.
+Synthetic data is for scale.
