@@ -2,7 +2,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -14,6 +13,7 @@ from enum import Enum
 from .core.auth import AuthService, get_current_user
 from .core.connectors import fetch_instances
 from .core.credentials_encryption import encrypt_credentials, decrypt_credentials
+from .db.connection import create_database_connection
 from .services.email_service import email_service
 from .services.notification_service import notification_service
 from .services.remediation import RemediationEngine
@@ -30,10 +30,9 @@ APP_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = APP_DIR.parent
 load_dotenv(BACKEND_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Database connection
+db_connection = create_database_connection(BACKEND_DIR)
+db = db_connection.db
 
 # Create the main app
 app = FastAPI(title="Cloud Watcher API", version="2.0.0")
@@ -1260,16 +1259,37 @@ async def startup_event():
     """Initialize scheduler on startup"""
     global auth_service
     auth_service = AuthService(db)
+
+    seed_default = "true" if db_connection.provider == "sqlite" else "false"
+    seed_demo_user = os.environ.get("SEED_DEMO_USER", seed_default).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if seed_demo_user:
+        seed_result = await auth_service.ensure_demo_user(
+            email=os.environ.get("DEMO_USER_EMAIL", "admin@cloudwatcher.com"),
+            password=os.environ.get("DEMO_USER_PASSWORD", "Admin123!"),
+            name=os.environ.get("DEMO_USER_NAME", "CloudCatcher Demo Admin"),
+            organization_name=os.environ.get("DEMO_ORGANIZATION_NAME", "CloudCatcher Demo"),
+        )
+        if seed_result["created"]:
+            logger.info("Seeded demo user %s", seed_result["email"])
     
     # Setup and start scheduler
     sync_interval = int(os.environ.get("SYNC_INTERVAL_MINUTES", "60"))
     setup_scheduler(db, email_service, notification_service, sync_interval)
     start_scheduler()
-    logger.info(f"CloudWatcher started with {sync_interval} minute sync interval")
+    logger.info(
+        "CloudWatcher started with %s backend and %s minute sync interval",
+        db_connection.provider,
+        sync_interval,
+    )
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     """Cleanup on shutdown"""
     stop_scheduler()
-    client.close()
+    await db_connection.close()
     logger.info("CloudWatcher shutdown complete")

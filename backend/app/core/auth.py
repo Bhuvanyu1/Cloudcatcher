@@ -144,6 +144,50 @@ def create_password_reset_token(email: str) -> str:
 class AuthService:
     def __init__(self, db):
         self.db = db
+
+    async def ensure_demo_user(
+        self,
+        email: str = "admin@cloudwatcher.com",
+        password: str = "Admin123!",
+        name: str = "CloudCatcher Demo Admin",
+        organization_name: str = "CloudCatcher Demo",
+    ) -> dict:
+        """Create the local demo admin user if it does not exist."""
+        existing = await self.db.users.find_one({"email": email})
+        if existing:
+            return {"created": False, "id": existing["id"], "email": email}
+
+        organization = await self.db.organizations.find_one({"name": organization_name})
+        if organization:
+            org_id = organization["id"]
+        else:
+            org_id = f"org_{uuid.uuid4().hex[:12]}"
+            await self.db.organizations.insert_one({
+                "id": org_id,
+                "name": organization_name,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "settings": {}
+            })
+
+        user_id = f"usr_{uuid.uuid4().hex[:12]}"
+        await self.db.users.insert_one({
+            "id": user_id,
+            "email": email,
+            "password": hash_password(password),
+            "name": name,
+            "role": UserRole.ADMIN.value,
+            "organization_id": org_id,
+            "email_verified": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "last_login_at": None,
+            "settings": {
+                "timezone": "UTC",
+                "email_notifications": True,
+                "slack_notifications": False
+            }
+        })
+
+        return {"created": True, "id": user_id, "email": email}
     
     async def register_user(self, email: str, password: str, name: str, organization_name: str = None) -> dict:
         """Register a new user"""

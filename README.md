@@ -60,6 +60,7 @@ A multi-cloud instance inventory platform that unifies AWS EC2, Azure VMs, GCP C
 │   ├── app/
 │   │   ├── main.py        # FastAPI application package entrypoint
 │   │   ├── core/          # Auth, credentials, and cloud connectors
+│   │   ├── db/            # Switchable database factory and adapters
 │   │   └── services/      # Email, notifications, scheduler, remediation, WAFR
 │   ├── legacy/
 │   │   └── practice_arena/ # Archived Flask MVP kept for reference only
@@ -199,7 +200,8 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your MongoDB URL
+# Default local/demo mode uses SQLite.
+# Set DB_BACKEND=mongo and configure MONGO_URL to use MongoDB.
 
 # Run server
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
@@ -223,12 +225,20 @@ yarn start
 
 ### Backend (`/backend/.env`)
 ```env
+DB_BACKEND=sqlite
+SQLITE_DB_PATH=cloudcatcher.sqlite3
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=cloudwatcher
+MONGO_SERVER_SELECTION_TIMEOUT_MS=5000
 CORS_ORIGINS=*
 ENCRYPTION_KEY=base64-encoded-32-byte-key
 JWT_SECRET_KEY=replace-with-long-random-secret
 SYNC_INTERVAL_MINUTES=60
+SEED_DEMO_USER=true
+DEMO_USER_EMAIL=admin@cloudwatcher.com
+DEMO_USER_PASSWORD=Admin123!
+DEMO_USER_NAME=CloudCatcher Demo Admin
+DEMO_ORGANIZATION_NAME=CloudCatcher Demo
 APP_URL=http://localhost:3000
 SENDER_EMAIL=onboarding@resend.dev
 RESEND_API_KEY=
